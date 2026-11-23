@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contract Register</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a register a contracts team opens every morning
+   IDEA a Swiss railway timetable: deadlines hang as big numerals, contracts run as ruled lines
+   PICTURE the live register, a deadline timetable beside it, and each contract's value staircase
+   COLOUR white ground, black ink and rules, signal red only for what is due, one grey
+   TYPE Archivo expanded 800 for figures and titles + Archivo for text
+   LAYOUT laptop: figures row, register (2/3) beside timetable (1/3); phone: figures, timetable, register */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#0e0e0e);--ink:light-dark(#111,#f1f1f1);--red:light-dark(#e4002b,#ff4d6a);--grey:light-dark(#666,#a5a5a5);--line:light-dark(#dcdcdc,#2f2f2f);--soft:light-dark(#f4f4f4,#191919);--tint:light-dark(#fdecef,#2a1218)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Archivo,system-ui,sans-serif;overflow-x:clip}
+.band{padding-block:clamp(20px,3vw,40px);padding-left:max(4vw,16px);padding-right:max(4vw,16px)}
+.wrap{max-width:1320px;margin:0 auto}
+h1,h2,h3,.num{font-stretch:112%;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0}
+h1{font-size:clamp(30px,4.2vw,46px)}
+h2{font-size:clamp(22px,2.4vw,28px)}
+h3{font-size:18px}
+.top{border-top:8px solid var(--ink);padding-bottom:16px}
+.head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.sub{margin:6px 0 0;color:var(--grey)}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{font:inherit;font-weight:600;min-height:44px;padding:0 18px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);cursor:pointer;border-radius:0}
+.btn:hover{background:var(--soft)}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.primary:hover{opacity:.88}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.small{min-height:36px;padding:0 12px;font-size:14px}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.link:focus-visible,.chip:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.link{font:inherit;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left;font-weight:700}
+.link:hover{text-decoration:underline}
+.note{background:var(--tint);padding-block:12px;font-size:15px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:0;border-top:2px solid var(--ink);padding-top:0}
+.kpi{padding:16px 16px 18px 0;border-bottom:1px solid var(--line)}
+.kpi .num{font-size:clamp(34px,4vw,50px);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .lab{font-weight:600;margin-top:6px}
+.kpi .det{color:var(--grey);font-size:14px}
+.kpi.alert .num{color:var(--red)}
+.cur{font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:32px;padding-top:8px}
+@media(min-width:1000px){.grid{grid-template-columns:minmax(0,2.3fr) minmax(0,1fr)}}
+.tabs{display:flex;gap:24px;border-bottom:2px solid var(--ink);margin-bottom:14px;flex-wrap:wrap}
+.tab{font:inherit;font-weight:700;font-stretch:112%;font-size:18px;background:none;border:0;color:var(--grey);padding:8px 0;cursor:pointer;border-bottom:4px solid transparent;margin-bottom:-3px}
+.tab[aria-selected=true]{color:var(--ink);border-color:var(--red)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.chip{font:inherit;font-size:14px;min-height:36px;padding:0 12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip span{opacity:.65;margin-left:4px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.tools input[type=search]{flex:1 1 220px}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid color-mix(in srgb,var(--ink) 45%,transparent);padding:9px 10px;min-height:44px;border-radius:0;width:100%}
+textarea{min-height:80px;resize:vertical}
+.tools select{width:auto}
+.tools label{display:flex;gap:8px;align-items:center;font-size:14px;white-space:nowrap}
+.tools input[type=checkbox]{width:18px;min-height:18px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th{text-align:left;font-weight:600;color:var(--grey);font-size:13px;padding:8px 10px 8px 0;border-bottom:1px solid var(--ink)}
+td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr.row{cursor:pointer}
+tbody tr.row:hover{background:var(--soft)}
+.r{text-align:right}
+.nw{white-space:nowrap;font-variant-numeric:tabular-nums}
+.muted{color:var(--grey)}
+.small{font-size:13px}
+.pos{color:var(--ink);font-weight:600}
+.badge{display:inline-block;font-size:13px;font-weight:600;padding:2px 8px;border:1px solid currentColor;white-space:nowrap}
+.st-Expiring,.st-Expired{color:var(--red)}
+.st-Archived,.st-Upcoming{color:var(--grey)}
+.empty{padding:28px 0;color:var(--grey)}
+.dead h2{border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:4px}
+.tt{list-style:none;margin:0;padding:0}
+.tt li{display:grid;grid-template-columns:4.2em minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.tt li:hover{background:var(--soft)}
+.tt .d{font-stretch:112%;font-weight:800;font-size:40px;line-height:.95;font-variant-numeric:tabular-nums}
+.tt .m{font-size:13px;color:var(--grey);font-weight:600;white-space:nowrap}
+.tt .k{font-weight:700}
+.tt .in{font-size:14px;color:var(--grey)}
+.tt li.hot .d,.tt li.hot .k{color:var(--red)}
+.back{margin-bottom:16px;font-weight:600}
+.dtop{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;border-top:2px solid var(--ink);padding-top:18px;margin-top:12px}
+@media(min-width:860px){.dtop{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}}
+.big{font-size:clamp(36px,5vw,60px);white-space:nowrap;font-variant-numeric:tabular-nums}
+.fig{position:relative;min-height:260px;border-left:1px solid var(--line)}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+svg text{font:13px Archivo,system-ui,sans-serif;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:4px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(12em,1fr));gap:0 24px;margin:24px 0 8px}
+.facts div{border-top:1px solid var(--line);padding:10px 0}
+.facts dt{font-size:13px;color:var(--grey);font-weight:600}
+.facts dd{margin:2px 0 0;font-weight:600}
+.sec{margin-top:36px}
+.sec h3{border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.scroll{overflow-x:auto}
+.log{list-style:none;padding:0;margin:0}
+.log li{padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+dialog{border:0;border-top:8px solid var(--ink);padding:24px;width:min(680px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--bg);color:var(--ink)}
+dialog::backdrop{background:rgb(0 0 0/.45)}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.fgrid label{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:600}
+.fgrid .full{grid-column:1/-1}
+.fgrid .check{flex-direction:row;align-items:center;gap:10px;font-weight:500}
+.fgrid .check input{width:20px;min-height:20px}
+.hint{font-size:13px;color:var(--grey);font-weight:400}
+.dbtn{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;flex-wrap:wrap}
+.tag{display:inline-block;font-size:12px;line-height:1.5;padding:0 7px;border:1px solid color-mix(in srgb,var(--ink) 35%,transparent);margin:4px 4px 0 0;white-space:nowrap;color:var(--ink);font-weight:500}
+.famgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(14em,1fr));gap:6px 14px;margin-top:6px}
+.famgrid label{flex-direction:row!important;align-items:center;gap:8px;font-weight:500!important;min-height:36px}
+.famgrid input{width:18px;min-height:18px;accent-color:var(--red)}
+.famrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+fieldset.chf{border:1px solid var(--line);padding:12px 14px 16px;margin:0}
+.seg{display:flex;flex-wrap:wrap;gap:0;border:2px solid var(--ink)}
+.seg label{flex:1 1 9em;flex-direction:row!important;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:6px 12px;cursor:pointer;font-weight:700!important;font-stretch:112%;font-size:16px!important;border-right:1px solid var(--line)}
+.seg label:last-child{border-right:0}
+.seg input{width:18px;min-height:18px;accent-color:var(--red)}
+.seg label:has(input:checked){background:var(--ink);color:var(--bg)}
+.ctb{display:inline-block;font-stretch:112%;font-weight:800;font-size:13px;padding:1px 7px;background:var(--ink);color:var(--bg);margin-right:6px;vertical-align:1px}
+fieldset.chf legend{font-weight:700;font-stretch:112%;padding:0 6px}
+.al{margin-bottom:26px}
+.al h3{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+.al h3 .num{font-size:34px}
+.al.hot h3 .num{color:var(--red)}
+.intro{max-width:70ch;margin:0 0 18px}
+#auth{position:fixed;inset:0;background:var(--bg);z-index:20;display:grid;place-items:center;padding:16px;overflow:auto}
+body.locked main,body.locked header,body.locked #notice{visibility:hidden}
+.authbox{width:min(420px,100%);border-top:8px solid var(--ink);padding-top:24px}
+.authbox h1{margin-bottom:20px}
+.authform{display:flex;flex-direction:column;gap:14px}
+.authform label{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px}
+.authform .link{align-self:flex-start;font-weight:600;font-size:15px}
+.authmsg{margin:0;font-size:15px;min-height:1.4em}
+.authmsg.bad{color:var(--red)}
+.who{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;font-weight:600;max-width:calc(100vw - 32px);z-index:9;display:none}
+.filelink{color:inherit;font-weight:600}
+@media(max-width:600px){.fgrid{grid-template-columns:minmax(0,1fr)}table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flex;justify-content:space-between;gap:12px;border:0;padding:3px 0;text-align:right}.stack td::before{content:attr(data-l);color:var(--grey);font-size:13px;text-align:left}.stack td:empty{display:none}.stack td.first{display:block;text-align:left}.stack td.first::before{content:none}.tt .d{font-size:34px}}
+@media(prefers-reduced-motion:no-preference){.row,.tt li{transition:background .15s}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<header class="band top"><div class="wrap head">
+  <div><h1>Contract Register</h1><p class="sub" id="role" style="margin:0 0 4px;font-weight:600"></p><p class="sub" id="sub">Service contracts and vessel charters in one place, with every version and adjustment kept.</p></div>
+  <div class="actions"><button class="btn" id="exportBtn" type="button">Export CSV</button><button class="btn primary" id="newBtn" type="button">New contract</button></div>
+</div></header>
+<div class="band note" id="notice" hidden></div>
+<main>
+  <div id="listView">
+    <section class="band" style="padding-block:0"><div class="wrap kpis" id="kpis"></div></section>
+    <section class="band"><div class="wrap grid">
+      <div>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tab-contracts" aria-selected="true" data-tab="contracts" type="button">Contracts</button>
+          <button class="tab" role="tab" id="tab-suppliers" aria-selected="false" data-tab="suppliers" type="button">Suppliers</button>
+          <button class="tab" role="tab" id="tab-alerts" aria-selected="false" data-tab="alerts" type="button">Alerts</button>
+          <button class="tab" role="tab" id="tab-log" aria-selected="false" data-tab="log" type="button">Adjustment log</button>
+        </div>
+        <div class="filters" id="chips"></div>
+        <div class="tools">
+          <input type="search" id="q" placeholder="Search title, counterparty, reference or person" aria-label="Search">
+          <select id="sort" aria-label="Sort"><option value="end">Sort: end date</option><option value="title">Sort: name</option><option value="value">Sort: annual value</option><option value="updated">Sort: last updated</option></select>
+          <select id="svc" aria-label="Service family"></select>
+          <label><input type="checkbox" id="arch"> Show archived</label>
+          <button class="btn small" id="famBtn" type="button" data-act="fams">Service families</button>
+        </div>
+        <div id="tableBox"><p class="empty">Loading contracts…</p></div>
+      </div>
+      <aside class="dead"><h2>Next deadlines</h2><ol class="tt" id="deadlines"></ol></aside>
+    </div></section>
+  </div>
+  <section class="band" id="detailView" hidden><div class="wrap" id="detail"></div></section>
+</main>
+<dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
+<div id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="adapter.js"></script>
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CATS=[['service','Services'],['charter','Vessel charter'],['lease','Lease & rental'],['other','Other']];
+const DEF_FAM=[['fuel-transport','Fuel transport'],['fuel-storage','Fuel storage'],['bunkering','Ship bunkering (fuel pumping)'],['environmental','Environmental support'],['surveyor','Surveyor services'],['terminal','Terminal services'],['weather','Weather forecasting'],['agency','Ship agency'],['immigration','Immigration services'],['maintenance','Maintenance services']].map(([id,name])=>({id,name}));
+const CATN=Object.fromEntries(CATS);
+const PERIODS={day:'per day',month:'per month',year:'per year',total:'contract total'};
+const PSHORT={day:'/day',month:'/mo',year:'/yr',total:' total'};
+const VTYPES=['Price adjustment','Amendment','Renewal','Correction'];
+const INDEXES=['IPCA','IGP-M','INPC','US CPI','IPC (Uruguay)','UI (Unidad Indexada)','Fixed rate','Market rate','Negotiated','Other'];
+const CT={
+ TCP:{label:'TCP',long:'TCP, time charter party',hint:'Owner keeps the crew and technical management; you pay daily hire and buy the bunkers.',fields:[['tcpOption','Extension option','text','e.g. +1 year at charterers’ option'],['bunkersDelivery','Bunkers on delivery (mt)','number'],['bunkersRedelivery','Bunkers on redelivery (mt)','number'],['speedCons','Speed and consumption warranty','text','e.g. 13.5 kn on 28 mt VLSFO'],['offHire','Off-hire days to date','number'],['commission','Commissions (%)','number']]},
+ Bareboat:{label:'Bareboat',long:'Bareboat charter (BBC)',hint:'You crew, operate, insure and maintain the vessel; the owner only provides the hull.',fields:[['purchaseOption','Purchase option','select',['No','Yes']],['purchasePrice','Purchase option price','number'],['insuranceBy','Insurance (H&M, P&I) by','select',['Charterer','Owner']],['drydockBy','Dry-docking by','select',['Charterer','Owner']],['classSociety','Classification society','text','e.g. DNV, ABS, BV'],['nextDrydock','Next dry-docking due','date']]},
+ Other:{label:'Other',long:'Other (voyage charter, COA)',hint:'',fields:[]}};
+const CTF=Object.values(CT).flatMap(t=>t.fields);
+const normCT=v=>!v?'':/bare/i.test(v)?'Bareboat':/time|tcp/i.test(v)?'TCP':CT[v]?v:'Other';
+const MILES=[90,60,30,15];
+const CHF=[['vesselName','Vessel'],['imo','IMO number'],['vesselType','Vessel type'],['flag','Flag'],['dwt','Deadweight'],['deliveryPort','Delivery port'],['redeliveryPort','Redelivery port']];
+const validImo=x=>{if(!/^\d{7}$/.test(x))return false;let t=0;for(let i=0;i<6;i++)t+=+x[i]*(7-i);return t%10===+x[6]};
+const CURS=[['BRL','BRL, Brazilian real'],['USD','USD, US dollar'],['UYU','UYU, Uruguayan peso']];
+const S={admin:true,fams:DEF_FAM,svc:'all',contracts:[],loaded:false,tab:'contracts',cat:'all',q:'',sort:'end',arch:false,open:null,canWrite:true,names:{},busy:false};
+let db=null,user=null,assets=null,downloads=null,uid=null,unsub=null,onSubmit=null;
+
+const famName=id=>S.fams.find(f=>f.id===id)?.name||'';
+const svcTags=c=>(c.services||[]).map(famName).filter(Boolean).map(n=>`<span class="tag">${esc(n)}</span>`).join('');
+const inCat=c=>(S.cat==='all'||c.category===S.cat)&&(S.svc==='all'||(c.services||[]).includes(S.svc));
+const pad=n=>String(n).padStart(2,'0');
+const td0=new Date();const TODAY=`${td0.getFullYear()}-${pad(td0.getMonth()+1)}-${pad(td0.getDate())}`;
+const ms=iso=>{const [y,m,d]=iso.split('-').map(Number);return Date.UTC(y,m-1,d)};
+const addDays=(iso,n)=>new Date(ms(iso)+n*864e5).toISOString().slice(0,10);
+const until=iso=>Math.round((ms(iso)-ms(TODAY))/864e5);
+const fdate=iso=>iso?new Date(ms(iso)).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}):'—';
+const money=(v,cur,dp=2)=>{if(v==null||isNaN(v))return'—';if(cur==='UYU')return'$U\u00a0'+Number(v).toLocaleString('en-US',{maximumFractionDigits:dp});try{return new Intl.NumberFormat('en-US',{style:'currency',currency:cur||'USD',maximumFractionDigits:dp,minimumFractionDigits:0}).format(v)}catch(e){return (cur||'')+' '+Number(v).toLocaleString('en-US')}};
+const pct=p=>p==null||!isFinite(p)?'—':(p>0?'+':p<0?'−':'')+Math.abs(p).toFixed(2)+'%';
+const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3800)};
+const uname=id=>id?(S.names[id]||'Team member'):'Sample data';
+
+/* derived data */
+const vers=c=>[...(c.versions||[])].sort((a,b)=>a.eff<b.eff?-1:a.eff>b.eff?1:a.n-b.n);
+function withChange(c){const v=vers(c);return v.map((x,i)=>({...x,chg:i?((x.value-v[i-1].value)/v[i-1].value*100):null}))}
+function current(c){const v=vers(c);let cur=v[0];for(const x of v)if(x.eff<=TODAY)cur=x;return cur||{value:0}}
+function lastChange(c){const v=withChange(c).filter(x=>x.eff<=TODAY&&x.chg!=null);return v[v.length-1]}
+function noticeDate(c){return c.endDate&&c.noticeDays>0?addDays(c.endDate,-c.noticeDays):null}
+function deadlines(c){const r=[];if(c.archived)return r;const nd=noticeDate(c);if(nd&&nd>=TODAY)r.push({d:nd,k:c.autoRenew?'Last day to cancel':'Last day for notice'});if(c.endDate&&c.endDate>=TODAY)r.push({d:c.endDate,k:c.autoRenew?'Renews automatically':'Contract ends'});if(c.category==='charter'&&normCT(c.charterType)==='Bareboat'&&c.nextDrydock&&c.nextDrydock>=TODAY)r.push({d:c.nextDrydock,k:'Dry-docking due'});return r.map(x=>({...x,u:until(x.d),m:MILES.filter(m=>until(x.d)<=m).pop()}))}
+function status(c){if(c.archived)return'Archived';if(c.endDate&&c.endDate<TODAY)return'Expired';if(c.startDate&&c.startDate>TODAY)return'Upcoming';if(c.endDate&&until(c.endDate)<=90)return'Expiring';return'Active'}
+function annual(c){const v=current(c).value||0;if(c.period==='day')return v*365;if(c.period==='month')return v*12;if(c.period==='year')return v;if(c.period==='total'&&c.startDate&&c.endDate){const y=(ms(c.endDate)-ms(c.startDate))/(365*864e5);return y>0?v/Math.max(y,1/12):v}return v}
+
+/* rendering */
+function render(){
+  $('#newBtn').hidden=!S.canWrite;
+  $('#role').textContent=!db?'':S.admin?'You are the administrator':S.canWrite?'Editor access: you can add and edit contracts':'View-only access';
+  if(S.open){const c=S.contracts.find(x=>x.id===S.open);if(c){$('#listView').hidden=true;$('#detailView').hidden=false;renderDetail(c);return}S.open=null}
+  $('#listView').hidden=false;$('#detailView').hidden=true;
+  renderKpis();renderChips();renderDeadlines();
+  renderBody();
+  const samples=S.contracts.some(c=>c.sample);
+  const n=$('#notice');
+  if(n.dataset.kind!=='err'){n.hidden=!samples||!S.canWrite||!S.admin;n.innerHTML=samples?'<span>The register opens with a few sample contracts so you can see how it works.</span><button class="btn small" data-act="rmSamples" type="button">Remove sample contracts</button>':''}
+}
+function renderBody(){S.tab==='log'?renderLog():S.tab==='alerts'?renderAlerts():S.tab==='suppliers'?renderSuppliers():renderTable()}
+function renderSuppliers(){
+  const q=S.q.trim().toLowerCase(),g={};
+  S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c)).forEach(c=>{const k=(c.counterparty||'').trim().toLowerCase();(g[k]=g[k]||{name:c.counterparty,cs:[]}).cs.push(c)});
+  const rows=Object.values(g).filter(x=>!q||[x.name,...x.cs.map(c=>c.title),...x.cs.flatMap(c=>(c.services||[]).map(famName))].join(' ').toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  if(!rows.length){$('#tableBox').innerHTML='<p class="empty">No suppliers match these filters.</p>';return}
+  $('#tableBox').innerHTML=`<p class="intro">One supplier can hold several contracts and several types of service. Choose a supplier to see its contracts.</p><table class="stack"><thead><tr><th>Supplier</th><th>Services</th><th>Contracts</th><th class="r">Annualised value</th><th>Next deadline</th></tr></thead><tbody>${rows.map(x=>{const sv=[...new Set(x.cs.flatMap(c=>c.services||[]))].map(famName).filter(Boolean);const cats=[...new Set(x.cs.filter(c=>c.category!=='service').map(c=>CATN[c.category]||'Other'))];const val={};x.cs.filter(c=>!c.archived&&status(c)!=='Expired').forEach(c=>val[c.currency]=(val[c.currency]||0)+annual(c));const nd=x.cs.flatMap(deadlines).sort((a,b)=>a.u-b.u)[0];return`<tr class="row" data-supplier="${esc(x.name)}"><td class="first"><button class="link" type="button" data-supplier="${esc(x.name)}">${esc(x.name)}</button></td><td>${[...sv,...cats].map(n=>`<span class="tag">${esc(n)}</span>`).join('')||'<span class="muted">—</span>'}</td><td><div>${x.cs.length} contract${x.cs.length===1?'':'s'}</div><div class="muted small">${x.cs.map(c=>esc(c.title)).join('<br>')}</div></td><td class="r">${Object.entries(val).map(([k,v])=>`<div class="nw">${money(v,k,0)}</div>`).join('')||'<span class="muted">—</span>'}</td><td>${nd?`<div class="nw${nd.u<=30?' st-Expiring':''}"><b>${fdate(nd.d)}</b></div><div class="muted small">${esc(nd.k)}</div>`:'<span class="muted">—</span>'}</td></tr>`}).join('')}</tbody></table>`;
+}
+function renderKpis(){
+  const live=S.contracts.filter(c=>!c.archived&&status(c)!=='Expired');
+  const exp=live.filter(c=>status(c)==='Expiring').length;
+  const nd=live.filter(c=>{const d=noticeDate(c);return d&&d>=TODAY&&until(d)<=60}).length;
+  const byCur={};live.forEach(c=>{byCur[c.currency]=(byCur[c.currency]||0)+annual(c)});
+  const curs=Object.entries(byCur).sort((a,b)=>b[1]-a[1]);
+  const yAgo=addDays(TODAY,-365);
+  const adj=S.contracts.flatMap(c=>withChange(c).filter(v=>v.chg!=null&&v.type==='Price adjustment'&&v.eff>yAgo&&v.eff<=TODAY));
+  const avg=adj.length?adj.reduce((s,v)=>s+v.chg,0)/adj.length:null;
+  $('#kpis').innerHTML=`
+  <div class="kpi"><div class="num">${live.length}</div><div class="lab">Active contracts</div><div class="det">${S.contracts.length} on file in total</div></div>
+  <div class="kpi ${exp?'alert':''}"><div class="num">${exp}</div><div class="lab">Ending within 90 days</div><div class="det">Renew, renegotiate or close</div></div>
+  <div class="kpi ${nd?'alert':''}"><div class="num">${nd}</div><div class="lab">Notice due within 60 days</div><div class="det">Last day to give notice</div></div>
+  <div class="kpi"><div class="num">${avg==null?'—':pct(avg)}</div><div class="lab">Average price adjustment</div><div class="det">${adj.length} adjustment${adj.length===1?'':'s'} in the last 12 months</div></div>
+  <div class="kpi"><div class="lab" style="margin-top:0">Annualised value, active</div>${curs.length?curs.map(([k,v])=>`<div class="cur"><b>${money(v,k,0)}</b> <span class="muted">${esc(k)}</span></div>`).join(''):'<div class="det">No active contracts</div>'}</div>`;
+}
+function renderChips(){
+  const base=S.contracts.filter(c=>S.arch||!c.archived);
+  const cnt=k=>base.filter(c=>k==='all'||c.category===k).length;
+  if(S.svc!=='all'&&!S.fams.some(f=>f.id===S.svc))S.svc='all';
+  $('#svc').innerHTML=`<option value="all">All service families</option>`+S.fams.map(f=>`<option value="${esc(f.id)}"${S.svc===f.id?' selected':''}>${esc(f.name)} (${base.filter(c=>(c.services||[]).includes(f.id)).length})</option>`).join('');
+  $('#famBtn').hidden=!S.canWrite||!S.admin;
+  $('#chips').innerHTML=[['all','All'],...CATS].map(([k,l])=>`<button type="button" class="chip" data-cat="${k}" aria-pressed="${S.cat===k}">${esc(l)}<span>${cnt(k)}</span></button>`).join('');
+}
+function filtered(){
+  const q=S.q.trim().toLowerCase();
+  let r=S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c));
+  if(q)r=r.filter(c=>[c.title,c.counterparty,c.reference,c.owner,c.notes,c.vesselName,c.imo,c.deliveryPort,c.redeliveryPort,c.vesselType,normCT(c.charterType),c.charterType&&CT[normCT(c.charterType)].long,...(c.services||[]).map(famName)].join(' ').toLowerCase().includes(q));
+  const k=S.sort;
+  r.sort((a,b)=>k==='title'?(a.title||'').localeCompare(b.title||''):k==='value'?annual(b)-annual(a):k==='updated'?(b.updatedAt||'').localeCompare(a.updatedAt||''):(a.endDate||'9999').localeCompare(b.endDate||'9999'));
+  return r;
+}
+function renderTable(){
+  if(!S.loaded){$('#tableBox').innerHTML='<p class="empty">Loading contracts…</p>';return}
+  const r=filtered();
+  if(!r.length){$('#tableBox').innerHTML=`<p class="empty">${S.contracts.length?'No contracts match these filters.':'No contracts yet. Use “New contract” to add your first one.'}</p>`;return}
+  $('#tableBox').innerHTML=`<table class="stack"><thead><tr><th>Contract</th><th>Category</th><th class="r">Current value</th><th class="r">Last change</th><th>Ends</th><th>Status</th></tr></thead><tbody>${r.map(c=>{const cu=current(c),lc=lastChange(c),st=status(c);return`<tr class="row" data-open="${esc(c.id)}"><td class="first"><button class="link" type="button" data-open="${esc(c.id)}">${esc(c.title)}</button><div class="muted small">${c.category==='charter'&&c.charterType?`<span class="ctb">${esc(CT[normCT(c.charterType)].label)}</span>`:''}${c.vesselName?esc(c.vesselName)+(c.imo?' (IMO '+esc(c.imo)+')':'')+' — ':''}${esc(c.counterparty)}${c.reference?' — '+esc(c.reference):''}</div>${c.category==='service'&&(c.services||[]).length?`<div>${svcTags(c)}</div>`:''}</td><td>${esc(CATN[c.category]||'Other')}</td><td class="r"><span class="nw">${money(cu.value,c.currency)}<span class="muted small">${PSHORT[c.period]||''}</span></span></td><td class="r nw">${lc?`<div><span class="pos">${pct(lc.chg)}</span><div class="muted small">${fdate(lc.eff)}</div></div>`:'<span class="muted">Original</span>'}</td><td class="nw">${c.endDate?fdate(c.endDate):'<span class="muted">Open-ended</span>'}</td><td><span class="badge st-${st}">${st}</span></td></tr>`}).join('')}</tbody></table>`;
+}
+function renderLog(){
+  const q=S.q.trim().toLowerCase();
+  const rows=S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c)).flatMap(c=>withChange(c).filter(v=>v.n>1).map(v=>({c,v}))).filter(({c,v})=>!q||[c.title,c.counterparty,v.notes,v.index,v.type].join(' ').toLowerCase().includes(q)).sort((a,b)=>b.v.eff.localeCompare(a.v.eff));
+  if(!rows.length){$('#tableBox').innerHTML='<p class="empty">No adjustments or amendments recorded yet.</p>';return}
+  $('#tableBox').innerHTML=`<table class="stack"><thead><tr><th>Effective</th><th>Contract</th><th>Type</th><th>Index</th><th class="r">Change</th><th class="r">New value</th></tr></thead><tbody>${rows.map(({c,v})=>`<tr class="row" data-open="${esc(c.id)}"><td class="nw first">${fdate(v.eff)}${v.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td><button class="link" type="button" data-open="${esc(c.id)}">${esc(c.title)}</button><div class="muted small">${esc(v.notes||'')}</div></td><td>${esc(v.type)} <span class="muted small">v${v.n}</span></td><td>${esc(v.index||'—')}</td><td class="r nw pos">${pct(v.chg)}</td><td class="r nw"><span>${money(v.value,c.currency)}<span class="muted small">${PSHORT[c.period]||''}</span></span></td></tr>`).join('')}</tbody></table>`;
+}
+function renderAlerts(){
+  const q=S.q.trim().toLowerCase();
+  const all=S.contracts.filter(c=>inCat(c)&&(!q||[c.title,c.counterparty,c.vesselName,c.owner].join(' ').toLowerCase().includes(q))).flatMap(c=>deadlines(c).filter(x=>x.m).map(x=>({...x,c})));
+  const intro='<p class="intro">Every contract is checked each morning. When an end date, notice deadline or bareboat dry-docking date reaches <b>90, 60, 30 or 15 days</b>, it goes into an email summary for the administrators and for the contract’s responsible email. The lists below show where each deadline stands today.</p>';
+  if(!all.length){$('#tableBox').innerHTML=intro+'<p class="empty">No deadlines within the next 90 days.</p>';return}
+  $('#tableBox').innerHTML=intro+[15,30,60,90].map(m=>{const r=all.filter(x=>x.m===m).sort((a,b)=>a.u-b.u);const lo={15:0,30:16,60:31,90:61}[m];return`<div class="al ${m<=30&&r.length?'hot':''}"><h3><span class="num">${r.length}</span> ${m}-day alert <span class="muted small" style="font-weight:600">${lo}–${m} days left</span></h3>${r.length?`<table class="stack"><thead><tr><th>Deadline</th><th>Contract</th><th>Date</th><th class="r">Days left</th><th>Responsible</th></tr></thead><tbody>${r.map(x=>`<tr class="row" data-open="${esc(x.c.id)}"><td class="first"><b>${esc(x.k)}</b></td><td><button class="link" type="button" data-open="${esc(x.c.id)}">${esc(x.c.title)}</button><div class="muted small">${esc(x.c.counterparty)}</div></td><td class="nw">${fdate(x.d)}</td><td class="r nw"><b>${x.u}</b></td><td>${esc(x.c.owner||'—')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted" style="margin:10px 0">Nothing in this window.</p>'}</div>`}).join('');
+}
+function renderDeadlines(){
+  const lim=addDays(TODAY,365),ev=[];
+  S.contracts.filter(c=>!c.archived).forEach(c=>{
+    const nd=noticeDate(c);
+    if(nd&&nd>=TODAY&&nd<=lim)ev.push({d:nd,k:c.autoRenew?'Last day to cancel':'Last day for notice',c});
+    if(c.endDate&&c.endDate>=TODAY&&c.endDate<=lim)ev.push({d:c.endDate,k:c.autoRenew?'Renews automatically':'Contract ends',c});
+    if(c.category==='charter'&&normCT(c.charterType)==='Bareboat'&&c.nextDrydock&&c.nextDrydock>=TODAY&&c.nextDrydock<=lim)ev.push({d:c.nextDrydock,k:'Dry-docking due',c});
+    (c.versions||[]).filter(v=>v.eff>TODAY&&v.eff<=lim).forEach(v=>ev.push({d:v.eff,k:v.type+' takes effect',c}));
+  });
+  ev.sort((a,b)=>a.d.localeCompare(b.d));
+  $('#deadlines').innerHTML=ev.length?ev.slice(0,9).map(e=>{const u=until(e.d),dt=new Date(ms(e.d));return`<li class="${u<=30?'hot':''}" data-open="${esc(e.c.id)}" tabindex="0"><div><div class="d">${dt.getUTCDate()}</div><div class="m">${dt.toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'})}</div></div><div><div class="k">${esc(e.k)}</div><div>${esc(e.c.title)}</div><div class="in">${u===0?'Today':u===1?'Tomorrow':'In '+u+' days'}</div></div></li>`}).join(''):'<li style="cursor:default;display:block" class="muted">Nothing due in the next 12 months.</li>';
+}
+function renderDetail(c){
+  const st=status(c),cu=current(c),v=withChange(c),first=v[0],nd=noticeDate(c);
+  const total=first&&cu.value&&first.value?((cu.value-first.value)/first.value*100):null;
+  const nAdj=v.filter(x=>x.chg!=null&&x.eff<=TODAY).length;
+  const w=S.canWrite;
+  $('#detail').innerHTML=`
+  <button class="link back" type="button" data-act="back">← All contracts</button>
+  <div class="head"><div><h1>${esc(c.title)}</h1><p class="sub">${esc(c.counterparty)}</p></div>
+  ${w?`<div class="actions"><button class="btn primary" type="button" data-act="addVersion">New version or adjustment</button><button class="btn" type="button" data-act="edit">Edit details</button><button class="btn" type="button" data-act="archive">${c.archived?'Restore':'Archive'}</button>${S.admin?'<button class="btn danger" type="button" data-act="delete">Delete</button>':''}</div>`:''}</div>
+  <div class="dtop">
+    <div><div class="muted small" style="font-weight:600">Current value, version ${cu.n||1}</div><div class="num big">${money(cu.value,c.currency)}</div><div class="muted">${esc(c.currency)} ${PERIODS[c.period]||''}</div>
+    <p style="margin:14px 0 0"><span class="badge st-${st}">${st}</span></p>
+    <p>${total!=null&&nAdj?`<b>${pct(total)}</b> since the original value of ${money(first.value,c.currency)}, across ${nAdj} change${nAdj===1?'':'s'}.`:'No changes since the original value.'}${c.period!=='total'?`<br><span class="muted">Annualised: ${money(annual(c),c.currency,0)}</span>`:''}</p></div>
+    <div class="fig"><svg id="chart" role="img" aria-label="Contract value over time"></svg></div>
+  </div>
+  <dl class="facts">
+    <div><dt>Category</dt><dd>${esc(CATN[c.category]||'Other')}</dd></div>
+    ${c.category==='service'?`<div style="grid-column:1/-1"><dt>Service families</dt><dd>${svcTags(c)||'<span class="muted">None selected</span>'}</dd></div>`:''}
+    <div><dt>Reference</dt><dd>${esc(c.reference||'—')}</dd></div>
+    <div><dt>Responsible</dt><dd>${esc(c.owner||'—')}${c.ownerEmail?`<div class="muted small" style="font-weight:400">${esc(c.ownerEmail)}</div>`:''}</dd></div>
+    <div><dt>Start</dt><dd>${fdate(c.startDate)}</dd></div>
+    <div><dt>End</dt><dd>${c.endDate?fdate(c.endDate)+(c.endDate>=TODAY?` <span class="muted">(${until(c.endDate)} days)</span>`:''):'Open-ended'}</dd></div>
+    <div><dt>Notice deadline</dt><dd class="${nd&&nd>=TODAY&&until(nd)<=60?'st-Expiring':''}">${nd?fdate(nd)+` <span class="muted">(${c.noticeDays} days)</span>`:'—'}</dd></div>
+    <div><dt>Renewal</dt><dd>${c.autoRenew?'Automatic unless notice is given':'Manual'}</dd></div>
+    <div><dt>Default index</dt><dd>${esc(c.index||'—')}</dd></div>
+    <div><dt>Email alerts</dt><dd>${(()=>{const a=deadlines(c).filter(x=>x.m);return a.length?a.map(x=>`<span class="${x.m<=30?'st-Expiring':''}">${x.m}-day alert: ${esc(x.k.toLowerCase())}</span>`).join('<br>'):(c.archived?'Off while archived':'90, 60, 30 and 15 days before each deadline')})()}</dd></div>
+  </dl>
+  ${c.category==='charter'?`<h3 style="margin-top:28px;border-bottom:2px solid var(--ink);padding-bottom:8px">Vessel and charter${c.charterType?` <span class="ctb" style="font-size:16px;padding:2px 10px;margin-left:8px">${esc(CT[normCT(c.charterType)].label)}</span>`:''}</h3>${c.charterType?`<p class="muted" style="margin:8px 0 0">${esc(CT[normCT(c.charterType)].long)}. ${esc(CT[normCT(c.charterType)].hint)}</p>`:''}<dl class="facts" style="margin-top:8px">${[...CHF,...(CT[normCT(c.charterType)]?.fields||[])].map(([k,l])=>`<div><dt>${l}</dt><dd>${k==='dwt'&&c.dwt?Number(c.dwt).toLocaleString('en-US')+' t':(k==='nextDrydock'&&c[k]?fdate(c[k]):k==='purchasePrice'&&c[k]?money(Number(c[k]),c.currency,0):k==='commission'&&c[k]?esc(c[k])+'%':esc(c[k]||'—'))}${k==='imo'&&c.imo&&!validImo(String(c.imo))?' <span class="st-Expiring small">check digit invalid</span>':''}</dd></div>`).join('')}</dl>`:''}
+  ${c.notes?`<p style="max-width:70ch">${esc(c.notes)}</p>`:''}
+  <div class="sec"><h3>Version history <span class="muted small" style="font-weight:600">${v.length} version${v.length===1?'':'s'}</span></h3>
+  <div class="scroll"><table class="stack"><thead><tr><th>Version</th><th>Effective</th><th>Type</th><th class="r">Value</th><th class="r">Change</th><th>Index</th><th>What changed</th><th>Document</th><th>Recorded</th></tr></thead><tbody>
+  ${[...v].reverse().map(x=>`<tr><td class="first"><b class="num" style="font-size:18px">v${x.n}</b>${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td class="nw">${fdate(x.eff)}</td><td>${esc(x.type)}</td><td class="r nw">${money(x.value,c.currency)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td><td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}${x.end?`<div class="muted small">End date set to ${fdate(x.end)}</div>`:''}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):(w&&assets?`<button class="btn small" type="button" data-act="attach" data-n="${x.n}">Attach</button>`:'<span class="muted">—</span>')}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join('')}
+  </tbody></table></div></div>
+  ${(c.log||[]).length?`<div class="sec"><h3>Change log</h3><ul class="log">${[...c.log].reverse().map(l=>`<li><b class="nw">${fdate(l.at.slice(0,10))}</b> <span class="muted">${esc(uname(l.by))}</span><div>${esc(l.text)}</div></li>`).join('')}</ul></div>`:''}`;
+  drawChart();
+}
+const chartRO=new ResizeObserver(()=>drawChart());
+let chartEl=null;
+function drawChart(){
+  const s=$('#chart');if(!s)return;
+  if(s!==chartEl){chartRO.disconnect();chartEl=s;chartRO.observe(s)}
+  const c=S.contracts.find(x=>x.id===S.open);if(!c)return;
+  const W=s.clientWidth,H=s.clientHeight;if(W<50||H<50)return;
+  const v=withChange(c);if(!v.length){s.innerHTML='';return}
+  const L=16,R=16,T=34,B=30;
+  const t0=ms(v[0].eff);let t1=Math.max(ms(TODAY),ms(v[v.length-1].eff));
+  if(c.endDate&&ms(c.endDate)>t1&&ms(c.endDate)-t1<400*864e5)t1=ms(c.endDate);
+  if(t1-t0<30*864e5)t1=t0+30*864e5;
+  const vals=v.map(x=>x.value),mn=Math.min(...vals),mx=Math.max(...vals),sp=(mx-mn)||mx*.1||1;
+  const y0=Math.max(0,mn-sp*.6),y1=mx+sp*.35;
+  const X=t=>L+(t-t0)/(t1-t0)*(W-L-R),Y=val=>T+(1-(val-y0)/(y1-y0))*(H-T-B);
+  let d=`M${X(t0)},${Y(v[0].value)}`;v.slice(1).forEach(x=>{d+=`H${X(ms(x.eff))}V${Y(x.value)}`});d+=`H${X(t1)}`;
+  const area=d+`V${H-B}H${X(t0)}Z`;
+  let g=`<path d="${area}" fill="color-mix(in srgb,var(--red) 9%,transparent)" stroke="none"/><line x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}" stroke="var(--ink)"/>`;
+  const ys=new Date(t0).getUTCFullYear(),ye=new Date(t1).getUTCFullYear(),step=W<520?Math.ceil((ye-ys+1)/3):1;
+  for(let y=ys+1;y<=ye;y+=step){const x=X(Date.UTC(y,0,1));if(x>L+20&&x<W-R-20)g+=`<line x1="${x}" x2="${x}" y1="${H-B}" y2="${H-B+5}" stroke="var(--ink)"/><text x="${x}" y="${H-B+20}" text-anchor="middle" fill="var(--grey)">${y}</text>`}
+  const tx=X(ms(TODAY));if(tx>L&&tx<W-R)g+=`<line x1="${tx}" x2="${tx}" y1="${T-14}" y2="${H-B}" stroke="var(--grey)" stroke-dasharray="3 4"/><text x="${tx}" y="${T-18}" text-anchor="${tx>W-60?'end':'middle'}" fill="var(--grey)">Today</text>`;
+  g+=`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+  let lastX=-1e9;
+  v.forEach((x,i)=>{const px=X(ms(x.eff)),py=Y(x.value);g+=`<circle cx="${px}" cy="${py}" r="${i?5:4}" fill="${i?'var(--red)':'var(--ink)'}"/>`;
+    const lab=i?pct(x.chg):(W<520?'':money(x.value,c.currency,0));
+    if(lab&&(px-lastX>=(W<520?52:90)||i===v.length-1)&&!(i===v.length-1&&px-lastX<40)){const anc=px<L+40?'start':px>W-R-50?'end':'middle';g+=`<text x="${px}" y="${py-11}" text-anchor="${anc}" font-weight="700">${esc(lab)}</text>`;lastX=px}});
+  s.innerHTML=g;
+}
+
+/* dialogs */
+const dlg=$('#dlg'),form=$('#dlgForm');
+function openDlg(html,handler){form.innerHTML=html;onSubmit=handler;dlg.showModal();const f=form.querySelector('input:not([type=checkbox]),select');if(f)f.focus()}
+function confirmDlg(title,msg,label,fn){openDlg(`<h2>${esc(title)}</h2><p>${msg}</p><div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">${esc(label)}</button></div>`,async()=>{await fn();dlg.close()})}
+const opt=(list,sel)=>list.map(o=>{const [k,l]=Array.isArray(o)?o:[o,o];return`<option value="${esc(k)}"${k===sel?' selected':''}>${esc(l)}</option>`}).join('');
+const val=id=>form.querySelector('#'+id)?.value.trim()??'';
+
+function contractDlg(c){
+  const isNew=!c;const d=c||{services:[],currency:'BRL',period:'month',category:'service',noticeDays:90,startDate:TODAY,index:'IPCA'};
+  openDlg(`<h2>${isNew?'New contract':'Edit contract details'}</h2>
+  ${isNew?'':'<p class="hint">Values change through a new version, so the history stays complete. Edits here are recorded in the change log.</p>'}
+  <div class="fgrid">
+  <label class="full">Contract title *<input id="f-title" value="${esc(d.title||'')}" placeholder="e.g. Time charter, MV Atlantic Star" maxlength="160"></label>
+  <label>Counterparty *<input id="f-cp" value="${esc(d.counterparty||'')}" placeholder="Company name" maxlength="160"></label>
+  <label>Category<select id="f-cat">${opt(CATS,d.category)}</select></label>
+  <fieldset id="f-svc" class="full chf"${d.category==='service'?'':' hidden'}><legend>Service families</legend><p class="hint" style="margin:0">Select every type of service this contract covers.</p><div class="famgrid">${S.fams.map(f=>`<label><input type="checkbox" name="svc" value="${esc(f.id)}"${(d.services||[]).includes(f.id)?' checked':''}> ${esc(f.name)}</label>`).join('')}</div></fieldset>
+  <fieldset id="f-ch" class="full chf"${d.category==='charter'?'':' hidden'}><legend>Vessel and charter details</legend>
+  <div class="fgrid" style="margin-top:4px"><div class="full"><div style="font-size:14px;font-weight:600;margin-bottom:6px">Charter type *</div><div class="seg" role="radiogroup" aria-label="Charter type">${Object.entries(CT).map(([k,t])=>`<label><input type="radio" name="ctype" value="${k}"${(normCT(d.charterType)||'TCP')===k?' checked':''}> ${esc(t.long)}</label>`).join('')}</div><p class="hint" id="f-cthint" style="margin:6px 0 0">${esc(CT[normCT(d.charterType)||'TCP'].hint)}</p></div></div>
+  ${Object.entries(CT).filter(([,t])=>t.fields.length).map(([k,t])=>`<div class="fgrid ctgroup" data-ct="${k}" style="margin-top:12px"${(normCT(d.charterType)||'TCP')===k?'':' hidden'}>${t.fields.map(([fk,fl,ft,fx])=>`<label>${esc(fl)}${ft==='select'?`<select id="f-x-${fk}">${opt(fx,d[fk]||fx[0])}</select>`:`<input id="f-x-${fk}" type="${ft}"${ft==='number'?' min="0" step="any"':''} value="${esc(d[fk]||'')}"${fx?` placeholder="${esc(fx)}"`:''} maxlength="120">`}</label>`).join('')}</div>`).join('')}
+  <div class="fgrid" style="margin-top:12px">
+  <label>Vessel name<input id="f-vessel" value="${esc(d.vesselName||'')}" placeholder="e.g. MV Atlantic Star" maxlength="80"></label>
+  <label>IMO number <span class="hint">7 digits</span><input id="f-imo" inputmode="numeric" maxlength="7" value="${esc(d.imo||'')}" placeholder="e.g. 9321483"></label>
+  <label>Vessel type<input id="f-vtype" value="${esc(d.vesselType||'')}" placeholder="e.g. Supramax bulk carrier" maxlength="80"></label>
+  <label>Flag<input id="f-flag" value="${esc(d.flag||'')}" placeholder="e.g. Marshall Islands" maxlength="60"></label>
+  <label>Deadweight (dwt)<input id="f-dwt" type="number" min="0" step="1" value="${esc(d.dwt||'')}"></label>
+  <label>Delivery port<input id="f-dport" value="${esc(d.deliveryPort||'')}" maxlength="80"></label>
+  <label>Redelivery port<input id="f-rport" value="${esc(d.redeliveryPort||'')}" maxlength="80"></label>
+  </div></fieldset>
+  <label>Reference no.<input id="f-ref" value="${esc(d.reference||'')}" maxlength="80"></label>
+  <label>Responsible person<input id="f-owner" value="${esc(d.owner||'')}" maxlength="80"></label>
+  <label class="full">Responsible email <span class="hint">receives the 90, 60, 30 and 15-day alerts for this contract</span><input type="email" id="f-oemail" value="${esc(d.ownerEmail||'')}" maxlength="120" placeholder="name@company.com"></label>
+  ${isNew?`<label>Currency<select id="f-cur">${opt(CURS,d.currency)}</select></label>
+  <label>Billing basis<select id="f-per">${opt(Object.entries(PERIODS),d.period)}</select></label>
+  <label class="full">Initial value *<input id="f-val" type="number" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 18500"></label>`:''}
+  <label>Start date *<input type="date" id="f-start" value="${esc(d.startDate||'')}"></label>
+  <label>End date <span class="hint">leave empty if open-ended</span><input type="date" id="f-end" value="${esc(d.endDate||'')}"></label>
+  <label>Notice period (days)<input type="number" min="0" step="1" id="f-notice" value="${d.noticeDays??''}"></label>
+  <label>Default adjustment index<select id="f-idx">${opt(INDEXES,d.index)}</select></label>
+  <label class="check full"><input type="checkbox" id="f-auto"${d.autoRenew?' checked':''}> Renews automatically unless notice is given</label>
+  <label class="full">Notes<textarea id="f-notes" rows="3" maxlength="2000">${esc(d.notes||'')}</textarea></label>
+  ${isNew&&assets?'<label class="full">Signed contract <span class="hint">PDF or image, optional, up to 20 MB</span><input type="file" id="f-file" accept=".pdf,image/*"></label>':''}
+  </div>
+  <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">${isNew?'Create contract':'Save changes'}</button></div>`,async()=>{
+    const f={title:val('f-title'),counterparty:val('f-cp'),category:val('f-cat'),reference:val('f-ref'),owner:val('f-owner'),ownerEmail:val('f-oemail'),startDate:val('f-start'),endDate:val('f-end'),noticeDays:Number(val('f-notice'))||0,index:val('f-idx'),autoRenew:form.querySelector('#f-auto').checked,notes:val('f-notes')};
+    f.services=f.category==='service'?[...form.querySelectorAll('input[name=svc]:checked')].map(x=>x.value):[];
+    const ch=f.category==='charter';Object.assign(f,{vesselName:ch?val('f-vessel'):'',imo:ch?val('f-imo'):'',charterType:ch?(form.querySelector('input[name=ctype]:checked')?.value||'TCP'):'',vesselType:ch?val('f-vtype'):'',flag:ch?val('f-flag'):'',dwt:ch?val('f-dwt'):'',deliveryPort:ch?val('f-dport'):'',redeliveryPort:ch?val('f-rport'):''});
+    CTF.forEach(([k])=>f[k]='');if(ch)CT[f.charterType].fields.forEach(([k])=>f[k]=val('f-x-'+k));
+    if(!f.title||!f.counterparty||!f.startDate)return toast('Please fill in title, counterparty and start date.');
+    if(f.ownerEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail))return toast('The responsible email does not look right.');
+    if(f.imo&&!validImo(f.imo))return toast('That IMO number is not valid: it needs 7 digits with a correct check digit.');
+    if(f.endDate&&f.endDate<f.startDate)return toast('The end date is before the start date.');
+    const now=new Date().toISOString();
+    if(isNew){
+      const value=Number(val('f-val'));if(!(value>=0)||val('f-val')==='')return toast('Please enter the initial value.');
+      const file=await upload(form.querySelector('#f-file'));if(file===false)return;
+      const ref=db.collection('contracts').doc();
+      const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
+      await write(ref.id,body);S.open=ref.id;dlg.close();toast('Contract created.');
+    }else{
+      const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),charterType:'Charter type',services:'Service families',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
+      const ch=Object.keys(labels).filter(k=>String(c[k]??'')!==String(f[k]??'')).map(k=>k==='notes'?'Notes updated':`${labels[k]}: ${show(k,c[k])} → ${show(k,f[k])}`);
+      if(!ch.length){dlg.close();return}
+      const body=clone(c);Object.assign(body,f);body.log=[...(c.log||[]),{at:now,by:uid,text:ch.join('; ')}];
+      await write(c.id,body);dlg.close();toast('Changes saved and logged.');
+    }
+  });
+  form.querySelectorAll('input[name=ctype]').forEach(r=>r.addEventListener('change',()=>{const v=r.value;form.querySelectorAll('.ctgroup').forEach(g=>g.hidden=g.dataset.ct!==v);form.querySelector('#f-cthint').textContent=CT[v].hint}));
+  form.querySelector('#f-cat').addEventListener('change',e=>{form.querySelector('#f-ch').hidden=e.target.value!=='charter';form.querySelector('#f-svc').hidden=e.target.value!=='service'});
+}
+const show=(k,v)=>k==='services'?((v||[]).map(famName).join(', ')||'none'):k==='category'?(CATN[v]||v):k==='autoRenew'?(v?'Yes':'No'):/Date$/.test(k)?(v?fdate(v):'none'):(v===''||v==null?'none':v);
+function versionDlg(c){
+  const last=vers(c).slice(-1)[0]||{value:0};
+  openDlg(`<h2>New version</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Latest value <b>${money(last.value,c.currency)}</b> ${PERIODS[c.period]||''}. Enter either the adjustment percentage or the new value.</p>
+  <div class="fgrid">
+  <label>Type<select id="v-type">${opt(VTYPES,'Price adjustment')}</select></label>
+  <label>Effective date *<input type="date" id="v-eff" value="${TODAY}"></label>
+  <label>Adjustment %<input type="number" step="0.01" id="v-pct" inputmode="decimal" placeholder="e.g. 4.5"></label>
+  <label>New value * <span class="hint">${esc(c.currency)} ${PERIODS[c.period]||''}</span><input type="number" step="0.01" min="0" id="v-val" inputmode="decimal" value="${last.value}"></label>
+  <label>Index or basis<select id="v-idx">${opt(INDEXES,c.index||'Negotiated')}</select></label>
+  <label>New end date <span class="hint">for renewals and extensions</span><input type="date" id="v-end"></label>
+  <label class="full">What changed<textarea id="v-notes" rows="3" maxlength="2000" placeholder="e.g. Annual IPCA adjustment per clause 7.2"></textarea></label>
+  ${assets?'<label class="full">Signed amendment or letter <span class="hint">PDF or image, optional</span><input type="file" id="v-file" accept=".pdf,image/*"></label>':''}
+  </div>
+  <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save version</button></div>`,async()=>{
+    const value=Number(val('v-val')),eff=val('v-eff'),end=val('v-end');
+    if(!eff||val('v-val')===''||!(value>=0))return toast('Please enter the effective date and new value.');
+    if(end&&end<eff)return toast('The new end date is before the effective date.');
+    const file=await upload(form.querySelector('#v-file'));if(file===false)return;
+    const now=new Date().toISOString(),body=clone(c);
+    const n=Math.max(0,...(c.versions||[]).map(x=>x.n))+1;
+    body.versions=[...(c.versions||[]),{n,type:val('v-type'),eff,value,index:val('v-idx'),notes:val('v-notes'),end,file,at:now,by:uid}];
+    if(end){body.log=[...(c.log||[]),{at:now,by:uid,text:`End date: ${show('endDate',c.endDate)} → ${fdate(end)} (version ${n})`}];body.endDate=end}
+    await write(c.id,body);dlg.close();toast(`Version ${n} saved.`);
+  });
+  const p=form.querySelector('#v-pct'),v=form.querySelector('#v-val');
+  p.addEventListener('input',()=>{const x=parseFloat(p.value);if(isFinite(x))v.value=(Math.round(last.value*(1+x/100)*100)/100).toString()});
+  v.addEventListener('input',()=>{const x=parseFloat(v.value);if(isFinite(x)&&last.value)p.value=((x-last.value)/last.value*100).toFixed(2)});
+}
+function famDlg(){
+  const use=id=>S.contracts.filter(c=>(c.services||[]).includes(id)).length;
+  openDlg(`<h2>Service families</h2><p class="hint" style="font-size:15px">Rename a family and every contract that uses it follows. A family in use can't be removed.</p>
+  <div id="famList">${S.fams.map(f=>{const u=use(f.id);return`<div class="famrow" data-id="${esc(f.id)}"><input value="${esc(f.name)}" aria-label="Family name" maxlength="60"><span class="muted small nw">${u} contract${u===1?'':'s'}</span>${u?'<span style="width:84px"></span>':'<button type="button" class="btn small" data-act="rmFam">Remove</button>'}</div>`}).join('')}</div>
+  <div class="famrow" style="border:0"><input id="famNew" placeholder="Add a new family, e.g. Tug services" maxlength="60"><span></span><span></span></div>
+  <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save families</button></div>`,async()=>{
+    const list=[...form.querySelectorAll('#famList .famrow')].map(r=>({id:r.dataset.id,name:r.querySelector('input').value.trim()})).filter(f=>f.name);
+    const nn=val('famNew');if(nn)list.push({id:(nn.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30)||'family')+'-'+Math.random().toString(36).slice(2,6),name:nn});
+    const names=list.map(f=>f.name.toLowerCase());if(new Set(names).size!==names.length)return toast('Two families have the same name.');
+    for(const f of S.fams)if(!list.some(x=>x.id===f.id)&&use(f.id))list.push(f);
+    try{await db.doc('settings/families').set({list,updatedAt:new Date().toISOString(),by:uid})}catch(e){toast(e?.code==='invalid_argument'?'You have view-only access.':'Could not save: '+(e?.message||'try again.'));return}
+    S.fams=list;dlg.close();render();toast('Service families saved.');
+  });
+}
+const clone=c=>{const b=JSON.parse(JSON.stringify(c));delete b.id;return b};
+async function upload(input){
+  const f=input?.files?.[0];if(!f||!assets)return null;
+  if(f.size>20*1024*1024){toast('That file is over 20 MB.');return false}
+  try{toast('Uploading '+f.name+'…');const r=await assets.upload(f);return{id:r.id,url:r.url,name:f.name,size:r.sizeBytes}}
+  catch(e){toast('The file could not be uploaded: '+(e?.message||'error'));return false}
+}
+async function write(id,body){
+  if(!db){toast('The database is not available in this view.');throw new Error('no db')}
+  if(S.busy){toast('Still saving the last change, try again in a moment.');throw new Error('busy')}
+  S.busy=true;body.updatedAt=new Date().toISOString();
+  try{await db.collection('contracts').doc(id).set(body)}
+  catch(e){
+    if(e?.code==='invalid_argument'){S.canWrite=false;render();toast('You have view-only access to this register.')}
+    else if(e?.code==='quota_exceeded')toast('Storage is full. Delete old contracts or files to make room.');
+    else toast('Could not save: '+(e?.message||'please try again.'));
+    throw e;
+  }finally{S.busy=false}
+}
+
+/* events */
+document.addEventListener('click',async e=>{
+  const fd=e.target.closest('[data-doc]');if(fd){e.preventDefault();window.openDocument?.(fd.dataset.doc);return}
+  const t=e.target.closest('[data-act],[data-open],[data-cat],[data-tab],[data-supplier]');if(!t)return;
+  if(t.dataset.supplier){S.q=t.dataset.supplier;$('#q').value=S.q;S.tab='contracts';document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab==='contracts'));render();return}
+  if(t.dataset.cat){S.cat=t.dataset.cat;render();return}
+  if(t.dataset.tab){S.tab=t.dataset.tab;document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b===t));render();return}
+  if(t.dataset.open){S.open=t.dataset.open;render();window.scrollTo(0,0);return}
+  const a=t.dataset.act,c=S.contracts.find(x=>x.id===S.open);
+  if(a==='close')dlg.close();
+  else if(a==='back'){S.open=null;render()}
+  else if(a==='edit'&&c)contractDlg(c);
+  else if(a==='addVersion'&&c)versionDlg(c);
+  else if(a==='archive'&&c){const b=clone(c);b.archived=!c.archived;b.log=[...(c.log||[]),{at:new Date().toISOString(),by:uid,text:c.archived?'Restored from archive':'Archived'}];try{await write(c.id,b);toast(c.archived?'Contract restored.':'Contract archived.')}catch(_){}}
+  else if(a==='delete'&&c&&S.admin)confirmDlg('Delete this contract?',`<b>${esc(c.title)}</b> and its ${(c.versions||[]).length} version(s) will be removed for everyone. This can't be undone. Archiving keeps the history instead.`,'Delete permanently',async()=>{await db.collection('contracts').doc(c.id).delete();S.open=null;toast('Contract deleted.')});
+  else if(a==='attach'&&c){const n=Number(t.dataset.n),inp=document.createElement('input');inp.type='file';inp.accept='.pdf,image/*';inp.onchange=async()=>{const file=await upload(inp);if(!file)return;const b=clone(c);b.versions=b.versions.map(x=>x.n===n?{...x,file}:x);try{await write(c.id,b);toast('Document attached to version '+n+'.')}catch(_){}};inp.click()}
+  else if(a==='fams'&&S.admin)famDlg();
+  else if(a==='rmFam'){t.closest('.famrow').remove()}
+  else if(a==='rmSamples'){const sm=S.contracts.filter(x=>x.sample);confirmDlg('Remove sample contracts?',`${sm.length} sample contract(s) will be deleted. Your own contracts are not affected.`,'Remove samples',async()=>{for(const x of sm)await db.collection('contracts').doc(x.id).delete();toast('Sample contracts removed.')})}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('li[data-open]')){S.open=e.target.dataset.open;render()}});
+form.addEventListener('submit',async e=>{e.preventDefault();const b=form.querySelector('[type=submit]');if(b.disabled)return;b.disabled=true;try{await onSubmit?.()}catch(_){}finally{b.disabled=false}});
+$('#newBtn').addEventListener('click',()=>{if(!db)return toast('The database is not available in this view.');contractDlg(null)});
+$('#q').addEventListener('input',e=>{S.q=e.target.value;renderBody()});
+$('#sort').addEventListener('change',e=>{S.sort=e.target.value;renderBody()});
+$('#svc').addEventListener('change',e=>{S.svc=e.target.value;render()});
+$('#arch').addEventListener('change',e=>{S.arch=e.target.checked;render()});
+$('#exportBtn').addEventListener('click',async()=>{
+  const q=v=>{const s=String(v??'');return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const rows=[['Contract ID','Title','Counterparty','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port']];
+  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort])));
+  const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),name=`contracts-${TODAY}.csv`;
+  if(downloads){try{await downloads.save({filename:name,data:csv});return}catch(e){if(e?.code==='declined')return}}
+  try{await navigator.clipboard.writeText(csv);toast('CSV copied to the clipboard.')}catch(_){toast('Export is not available in this view.')}
+});
+
+/* names for audit trail */
+async function loadNames(){
+  if(!user?.profiles)return;
+  const ids=[...new Set(S.contracts.flatMap(c=>[...(c.versions||[]).map(v=>v.by),...(c.log||[]).map(l=>l.by)]).filter(x=>x&&!(x in S.names)))];
+  if(!ids.length)return;
+  ids.forEach(i=>S.names[i]='');
+  try{const ps=await user.profiles(ids);ids.forEach(i=>S.names[i]=ps?.[i]?.name||'Team member');render()}catch(_){}
+}
+
+/* start */
+async function start(){
+  const use=n=>window.claude?.use?window.claude.use(n).catch(()=>null):Promise.resolve(null);
+  [db,user,assets,downloads]=await Promise.all([use('db'),use('user'),use('assets'),use('downloads')]);
+  const n=$('#notice');
+  if(!db){S.loaded=true;S.canWrite=false;n.dataset.kind='err';n.hidden=false;n.textContent='The contract database is not available. Check config.js and the setup guide.';render();return}
+  if(user){try{uid=await user.id()}catch(_){}try{const w=await user.can('data.write');if(w===false)S.canWrite=false}catch(_){}try{const o=await user.isOwner();if(o===false)S.admin=false}catch(_){}}
+  const timer=setTimeout(()=>{if(!S.loaded){n.dataset.kind='err';n.hidden=false;n.textContent='The database can’t be reached yet. Showing nothing until it answers.'}},10000);
+  try{db.doc('settings/families').onSnapshot(d=>{const l=d.exists&&d.data()?.list;if(Array.isArray(l)&&l.length){S.fams=l;render()}},()=>{})}catch(_){}
+  unsub=db.collection('contracts').onSnapshot(snap=>{
+    S.contracts=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!snap.metadata.fromCache){clearTimeout(timer);S.loaded=true;if(n.dataset.kind==='err'){n.dataset.kind='';n.hidden=true}}
+    else if(snap.size)S.loaded=true;
+    render();loadNames();
+  },err=>{clearTimeout(timer);S.loaded=true;n.dataset.kind='err';n.hidden=false;n.textContent='The database stopped responding. Reload the page to reconnect.';render()});
+}
+render();start();
+}
+</script>
+</body>
+</html>
