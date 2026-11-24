@@ -76,7 +76,7 @@
       e.preventDefault();
       msg('Signing in…');
       const { data, error } = await sb.auth.signInWithPassword({ email: document.getElementById('em').value.trim(), password: document.getElementById('pw').value });
-      if (error) return msg(/invalid/i.test(error.message) ? 'Email or password is not correct.' : error.message, true);
+      if (error) return msg(/invalid login credentials/i.test(error.message) ? 'Email or password is not correct.' : /not confirmed/i.test(error.message) ? 'This email has not been confirmed yet. Ask the administrator to confirm it in Supabase.' : 'Could not sign in: ' + error.message + ' (server: ' + (cfg.supabaseUrl || 'not set') + ')', true);
       session = data.session;
       enter();
     };
