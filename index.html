@@ -188,8 +188,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=6"></script>
-<script src="adapter.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="adapter.js?v=7"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -361,7 +361,7 @@ function renderDetail(c){
   ${hasCrew(c)?crewSection(c,w):''}
   <div class="sec"><h3>Version history <span class="muted small" style="font-weight:600">${v.length} version${v.length===1?'':'s'}</span></h3>
   <div class="scroll"><table class="stack"><thead><tr><th>Version</th><th>Effective</th><th>Type</th><th class="r">Value</th><th class="r">Change</th><th>Index</th><th>What changed</th><th>Document</th><th>Recorded</th></tr></thead><tbody>
-  ${[...v].reverse().map(x=>`<tr><td class="first"><b class="num" style="font-size:18px">v${x.n}</b>${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td class="nw">${fdate(x.eff)}</td><td>${esc(x.type)}</td><td class="r nw">${money(x.value,c.currency)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td><td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}${x.end?`<div class="muted small">End date set to ${fdate(x.end)}</div>`:''}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):(w&&assets?`<button class="btn small" type="button" data-act="attach" data-n="${x.n}">Attach</button>`:'<span class="muted">—</span>')}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join('')}
+  ${[...v].reverse().map(x=>`<tr><td class="first"><b class="num" style="font-size:18px">v${x.n}</b>${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}${w?`<div><button class="btn small" type="button" data-act="editVer" data-n="${x.n}" style="margin-top:6px">Edit</button></div>`:''}</td><td class="nw">${fdate(x.eff)}</td><td>${esc(x.type)}</td><td class="r nw">${money(x.value,c.currency)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td><td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}${x.end?`<div class="muted small">End date set to ${fdate(x.end)}</div>`:''}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):(w&&assets?`<button class="btn small" type="button" data-act="attach" data-n="${x.n}">Attach</button>`:'<span class="muted">—</span>')}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join('')}
   </tbody></table></div></div>
   ${(c.log||[]).length?`<div class="sec"><h3>Change log</h3><ul class="log">${[...c.log].reverse().map(l=>`<li><b class="nw">${fdate(l.at.slice(0,10))}</b> <span class="muted">${esc(uname(l.by))}</span><div>${esc(l.text)}</div></li>`).join('')}</ul></div>`:''}`;
   drawChart();
@@ -377,6 +377,35 @@ function crewSection(c,w){
   <div class="scroll"><table class="stack"><thead><tr><th>Effective</th><th class="r">Value</th><th class="r">Change</th><th class="r">Crew members</th><th>Basis</th><th>Notes</th><th>Document</th><th>Recorded</th></tr></thead><tbody>
   ${[...v].reverse().map(x=>`<tr><td class="nw first">${fdate(x.eff)}${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td class="r nw">${money(x.value,cur)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td><td class="r">${x.members||'—'}</td><td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):'<span class="muted">—</span>'}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join('')}
   </tbody></table></div></div>`;
+}
+function editVersionDlg(c,n){
+  const x=(c.versions||[]).find(v=>v.n===n);if(!x)return;
+  const orig=n===1;
+  openDlg(`<h2>Edit version ${n}</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Use this to correct what was recorded. To register a new adjustment or renewal, use “New version or adjustment” instead, so the history stays complete. Every correction is written to the change log.</p>
+  <div class="fgrid">
+  <label>Type${orig?'<input value="Original" disabled>':`<select id="e-type">${opt(VTYPES,x.type)}</select>`}</label>
+  <label>Effective date *<input type="date" id="e-eff" value="${esc(x.eff)}"></label>
+  <label>Value * <span class="hint">${esc(c.currency)} ${PERIODS[c.period]||''}</span><input type="number" step="0.01" min="0" id="e-val" inputmode="decimal" value="${x.value}"></label>
+  <label>Index or basis<select id="e-idx">${opt(['',...INDEXES].map(o=>[o,o||'—']),x.index||'')}</select></label>
+  ${orig?'':`<label class="full">End date set by this version <span class="hint">leave empty if this version did not change the end date</span><input type="date" id="e-end" value="${esc(x.end||'')}"></label>`}
+  <label class="full">What changed<textarea id="e-notes" rows="3" maxlength="2000">${esc(x.notes||'')}</textarea></label>
+  </div>
+  <div class="dbtn">${S.admin&&!orig?`<button type="button" class="btn danger" data-act="delVer" data-n="${n}" style="margin-right:auto">Delete version</button>`:''}<button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save correction</button></div>`,async()=>{
+    const nv={...x,type:orig?'Original':val('e-type'),eff:val('e-eff'),value:Number(val('e-val')),index:val('e-idx'),notes:val('e-notes'),end:orig?(x.end||''):val('e-end')};
+    if(!nv.eff||val('e-val')===''||!(nv.value>=0))return toast('Please enter the effective date and value.');
+    if(nv.end&&nv.end<nv.eff)return toast('The end date is before the effective date.');
+    const L={type:'Type',eff:'Effective',value:'Value',index:'Index',notes:'Notes',end:'End date'};
+    const fmt=(k,v)=>k==='value'?money(v,c.currency):(k==='eff'||k==='end')?(v?fdate(v):'none'):(v||'none');
+    const ch=Object.keys(L).filter(k=>String(x[k]??'')!==String(nv[k]??'')).map(k=>k==='notes'?'notes updated':`${L[k]} ${fmt(k,x[k])} → ${fmt(k,nv[k])}`);
+    if(!ch.length){dlg.close();return}
+    const now=new Date().toISOString(),body=clone(c);
+    body.versions=body.versions.map(v=>v.n===n?{...nv,editedAt:now,editedBy:uid}:v);
+    const extra=[];
+    if(orig&&x.eff!==nv.eff&&c.startDate===x.eff){body.startDate=nv.eff;extra.push(`start date → ${fdate(nv.eff)}`)}
+    if(!orig&&x.end!==nv.end){const latest=[...body.versions].filter(v=>v.end).sort((a,b)=>a.eff<b.eff?-1:1).pop();const ne=latest?latest.end:(c.versions.find(v=>v.n===1)?.end||'');if(ne!==c.endDate){body.endDate=ne;extra.push(`contract end date → ${ne?fdate(ne):'none'}`)}}
+    body.log=[...(c.log||[]),{at:now,by:uid,text:`Version ${n} corrected: ${[...ch,...extra].join('; ')}`}];
+    await write(c.id,body);dlg.close();toast(`Version ${n} corrected.`);
+  });
 }
 function crewDlg(c){
   const v=crewV(c),last=v[v.length-1],isFirst=!last;
@@ -455,7 +484,11 @@ function contractDlg(c){
   <fieldset id="f-svc" class="full chf"${d.category==='service'?'':' hidden'}><legend>Service families</legend><p class="hint" style="margin:0">Select every type of service this contract covers.</p><div class="famgrid">${S.fams.map(f=>`<label><input type="checkbox" name="svc" value="${esc(f.id)}"${(d.services||[]).includes(f.id)?' checked':''}> ${esc(f.name)}</label>`).join('')}</div></fieldset>
   <fieldset id="f-ch" class="full chf"${d.category==='charter'?'':' hidden'}><legend>Vessel and charter details</legend>
   <div class="fgrid" style="margin-top:4px"><div class="full"><div style="font-size:14px;font-weight:600;margin-bottom:6px">Charter type *</div><div class="seg" role="radiogroup" aria-label="Charter type">${Object.entries(CT).map(([k,t])=>`<label><input type="radio" name="ctype" value="${k}"${(normCT(d.charterType)||'TCP')===k?' checked':''}> ${esc(t.long)}</label>`).join('')}</div><p class="hint" id="f-cthint" style="margin:6px 0 0">${esc(CT[normCT(d.charterType)||'TCP'].hint)}</p></div></div>
-  ${Object.entries(CT).filter(([,t])=>t.fields.length).map(([k,t])=>`<div class="fgrid ctgroup" data-ct="${k}" style="margin-top:12px"${(normCT(d.charterType)||'TCP')===k?'':' hidden'}>${t.fields.map(([fk,fl,ft,fx])=>`<label>${esc(fl)}${ft==='select'?`<select id="f-x-${fk}">${opt(fx,d[fk]||fx[0])}</select>`:`<input id="f-x-${fk}" type="${ft}"${ft==='number'?' min="0" step="any"':''} value="${esc(d[fk]||'')}"${fx?` placeholder="${esc(fx)}"`:''} maxlength="120">`}</label>`).join('')}</div>`).join('')}
+  ${Object.entries(CT).filter(([,t])=>t.fields.length).map(([k,t])=>`<div class="fgrid ctgroup" data-ct="${k}" style="margin-top:12px"${(normCT(d.charterType)||'TCP')===k?'':' hidden'}>${t.fields.map(([fk,fl,ft,fx])=>`<label>${esc(fl)}${ft==='select'?`<select id="f-x-${fk}">${opt(fx,d[fk]||fx[0])}</select>`:`<input id="f-x-${fk}" type="${ft}"${ft==='number'?' min="0" step="any"':''} value="${esc(d[fk]||'')}"${fx?` placeholder="${esc(fx)}"`:''} maxlength="120">`}</label>`).join('')}${k==='TCP'&&isNew?`<div class="full" style="font-weight:700;font-stretch:112%;margin-top:6px">Brazilian crew cost <span class="hint">optional, its own history is kept from the start date</span></div>
+  <label>Crew cost<input id="f-crew-val" type="number" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 420000"></label>
+  <label>Crew members<input id="f-crew-mem" type="number" step="1" min="0" inputmode="numeric" placeholder="e.g. 14"></label>
+  <label>Crew currency<select id="f-crew-cur">${opt(CURS,'BRL')}</select></label>
+  <label>Crew billing basis<select id="f-crew-per">${opt(Object.entries(PERIODS).filter(([x])=>x!=='total'),'month')}</select></label>`:''}</div>`).join('')}
   <div class="fgrid" style="margin-top:12px">
   <label>Vessel name<input id="f-vessel" value="${esc(d.vesselName||'')}" placeholder="e.g. MV Atlantic Star" maxlength="80"></label>
   <label>IMO number <span class="hint">7 digits</span><input id="f-imo" inputmode="numeric" maxlength="7" value="${esc(d.imo||'')}" placeholder="e.g. 9321483"></label>
@@ -494,7 +527,8 @@ function contractDlg(c){
       const value=Number(val('f-val'));if(!(value>=0)||val('f-val')==='')return toast('Please enter the initial value.');
       const file=await upload(form.querySelector('#f-file'));if(file===false)return;
       const ref=db.collection('contracts').doc();
-      const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
+      const cv=val('f-crew-val'),crewOn=f.category==='charter'&&f.charterType==='TCP'&&cv!==''&&Number(cv)>=0;
+      const body={...(crewOn?{crew:{currency:val('f-crew-cur')||'BRL',period:val('f-crew-per')||'month',versions:[{n:1,eff:f.startDate,value:Number(cv),members:Number(val('f-crew-mem'))||'',index:'',notes:'Crew cost at contract start',file:null,at:now,by:uid}]}}:{}),...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
       await write(ref.id,body);S.open=ref.id;dlg.close();toast('Contract created.');
     }else{
       const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),charterType:'Charter type',services:'Service families',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',termMonths:'Term (months)',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
@@ -524,6 +558,10 @@ function versionDlg(c){
   <label>Extend by (months) <span class="hint">from the current end date</span><input type="number" id="v-ext" min="1" max="600" step="1" inputmode="numeric" placeholder="e.g. 12"></label>
   <label>New end date <span class="hint">for renewals and extensions</span><input type="date" id="v-end"></label>
   <label class="full">What changed<textarea id="v-notes" rows="3" maxlength="2000" placeholder="e.g. Annual IPCA adjustment per clause 7.2"></textarea></label>
+  ${hasCrew(c)?(()=>{const cl=crewV(c).slice(-1)[0];return`<fieldset class="full chf"><legend>Brazilian crew cost</legend><p class="hint" style="margin:0 0 8px">${cl?`Latest crew cost <b>${money(cl.value,c.crew.currency)}</b> ${PERIODS[c.crew.period]||''}. Leave as it is if the crew cost does not change with this version.`:'Optional: fill in to start tracking the crew cost from this version.'}</p><div class="fgrid" style="margin-top:0">
+  ${cl?'<label>Crew adjustment %<input type="number" step="0.01" id="v-cpct" inputmode="decimal"></label>':`<label>Crew currency<select id="v-ccur">${opt(CURS,'BRL')}</select></label><label>Crew billing basis<select id="v-cper">${opt(Object.entries(PERIODS).filter(([x])=>x!=='total'),'month')}</select></label>`}
+  <label>Crew cost<input type="number" step="0.01" min="0" id="v-cval" inputmode="decimal" value="${cl?cl.value:''}"></label>
+  <label>Crew members<input type="number" step="1" min="0" id="v-cmem" inputmode="numeric" value="${esc(cl?.members||'')}"></label></div></fieldset>`})():''}
   ${assets?'<label class="full">Signed amendment or letter <span class="hint">PDF or image, optional</span><input type="file" id="v-file" accept=".pdf,image/*"></label>':''}
   </div>
   <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save version</button></div>`,async()=>{
@@ -535,9 +573,17 @@ function versionDlg(c){
     const n=Math.max(0,...(c.versions||[]).map(x=>x.n))+1;
     body.versions=[...(c.versions||[]),{n,type:val('v-type'),eff,value,index:val('v-idx'),notes:val('v-notes'),end,file,at:now,by:uid}];
     if(end){body.log=[...(c.log||[]),{at:now,by:uid,text:`End date: ${show('endDate',c.endDate)} → ${fdate(end)} (version ${n})`}];body.endDate=end}
+    const cvs=val('v-cval'),cl=crewV(c).slice(-1)[0];
+    if(hasCrew(c)&&cvs!==''&&Number(cvs)>=0&&(!cl||Number(cvs)!==cl.value||String(Number(val('v-cmem'))||'')!==String(cl.members||''))){
+      const crew=body.crew&&body.crew.versions?body.crew:{currency:val('v-ccur')||'BRL',period:val('v-cper')||'month',versions:[]};
+      const cn=Math.max(0,...crew.versions.map(x=>x.n))+1;
+      crew.versions=[...crew.versions,{n:cn,eff,value:Number(cvs),members:Number(val('v-cmem'))||'',index:val('v-idx'),notes:`With version ${n} (${val('v-type')})`,file:null,at:now,by:uid}];body.crew=crew;
+      body.log=[...(body.log||[]),{at:now,by:uid,text:cl?`Brazilian crew cost: ${money(cl.value,crew.currency)} → ${money(Number(cvs),crew.currency)} (${pct(cl.value?(Number(cvs)-cl.value)/cl.value*100:null)}) with version ${n}`:`Brazilian crew cost added: ${money(Number(cvs),crew.currency)} with version ${n}`}]}
     await write(c.id,body);dlg.close();toast(`Version ${n} saved.`);
   });
   const ext=form.querySelector('#v-ext'),ve=form.querySelector('#v-end');ext.addEventListener('input',()=>{const n=parseInt(ext.value,10);const base=c.endDate||val('v-eff');if(base&&n>0)ve.value=c.endDate?endFromTerm(addDays(c.endDate,1),n):endFromTerm(base,n)});
+  {const cp=form.querySelector('#v-cpct'),cvv=form.querySelector('#v-cval'),cl=crewV(c).slice(-1)[0];
+   if(cp&&cl){cp.addEventListener('input',()=>{const x=parseFloat(cp.value);if(isFinite(x))cvv.value=(Math.round(cl.value*(1+x/100)*100)/100).toString()});cvv.addEventListener('input',()=>{const x=parseFloat(cvv.value);if(isFinite(x)&&cl.value)cp.value=((x-cl.value)/cl.value*100).toFixed(2)})}}
   const p=form.querySelector('#v-pct'),v=form.querySelector('#v-val');
   p.addEventListener('input',()=>{const x=parseFloat(p.value);if(isFinite(x))v.value=(Math.round(last.value*(1+x/100)*100)/100).toString()});
   v.addEventListener('input',()=>{const x=parseFloat(v.value);if(isFinite(x)&&last.value)p.value=((x-last.value)/last.value*100).toFixed(2)});
@@ -590,6 +636,8 @@ document.addEventListener('click',async e=>{
   else if(a==='edit'&&c)contractDlg(c);
   else if(a==='addVersion'&&c)versionDlg(c);
   else if(a==='crew'&&c&&S.canWrite)crewDlg(c);
+  else if(a==='editVer'&&c&&S.canWrite)editVersionDlg(c,Number(t.dataset.n));
+  else if(a==='delVer'&&c&&S.admin){const n=Number(t.dataset.n),x=c.versions.find(v=>v.n===n);confirmDlg(`Delete version ${n}?`,`Version ${n} (${esc(x?.type||'')}, ${x?fdate(x.eff):''}, ${x?money(x.value,c.currency):''}) will be removed from the history. The deletion is written to the change log.`,'Delete version',async()=>{const b=clone(c);b.versions=b.versions.filter(v=>v.n!==n);if(x?.end&&x.end===c.endDate){const l=[...b.versions].filter(v=>v.end).sort((p,q)=>p.eff<q.eff?-1:1).pop();b.endDate=l?l.end:c.endDate}b.log=[...(c.log||[]),{at:new Date().toISOString(),by:uid,text:`Version ${n} deleted (${x?.type}, ${x?fdate(x.eff):''}, ${x?money(x.value,c.currency):''})`}];await write(c.id,b);toast(`Version ${n} deleted.`)})}
   else if(a==='archive'&&c){const b=clone(c);b.archived=!c.archived;b.log=[...(c.log||[]),{at:new Date().toISOString(),by:uid,text:c.archived?'Restored from archive':'Archived'}];try{await write(c.id,b);toast(c.archived?'Contract restored.':'Contract archived.')}catch(_){}}
   else if(a==='delete'&&c&&S.admin)confirmDlg('Delete this contract?',`<b>${esc(c.title)}</b> and its ${(c.versions||[]).length} version(s) will be removed for everyone. This can't be undone. Archiving keeps the history instead.`,'Delete permanently',async()=>{await db.collection('contracts').doc(c.id).delete();S.open=null;toast('Contract deleted.')});
   else if(a==='attach'&&c){const n=Number(t.dataset.n),inp=document.createElement('input');inp.type='file';inp.accept='.pdf,image/*';inp.onchange=async()=>{const file=await upload(inp);if(!file)return;const b=clone(c);b.versions=b.versions.map(x=>x.n===n?{...x,file}:x);try{await write(c.id,b);toast('Document attached to version '+n+'.')}catch(_){}};inp.click()}
