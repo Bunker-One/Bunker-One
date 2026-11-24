@@ -86,7 +86,7 @@ export function buildEmail(alerts, today, families, appUrl) {
 }
 
 async function supa(path) {
-  const r = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${path}`, {
+  const r = await fetch(`${env.SUPABASE_URL.replace(/\/(rest\/v1\/?)?$/, '')}/rest/v1/${path}`, {
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }
   });
   if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);

@@ -2,7 +2,10 @@
    The page talks to this file through window.claude.use(...); nothing here needs editing.
    Your Supabase address and public key go in config.js. */
 (() => {
-  const cfg = window.APP_CONFIG || {};
+  const cfg = { ...(window.APP_CONFIG || {}) };
+  // Accept a URL pasted with extra parts (e.g. .../rest/v1/): keep only https://xxxx.supabase.co
+  try { if (cfg.supabaseUrl) cfg.supabaseUrl = new URL(String(cfg.supabaseUrl).trim()).origin; } catch (_) {}
+  if (cfg.supabaseAnonKey) cfg.supabaseAnonKey = String(cfg.supabaseAnonKey).trim();
   const linkType = (/type=(invite|recovery|signup|magiclink)/.exec(location.hash) || [])[1] || null;
   const configured = !!(cfg.supabaseUrl && cfg.supabaseAnonKey && !/YOUR-/.test(cfg.supabaseUrl + cfg.supabaseAnonKey));
   const sb = configured && window.supabase ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
