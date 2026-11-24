@@ -177,3 +177,13 @@ begin
     alter publication supabase_realtime add table public.settings;
   end if;
 end $$;
+
+-- 7. Permissions for the app (new Supabase projects may not grant these by default) ----
+grant usage on schema public to anon, authenticated, service_role;
+grant select, update on public.profiles to authenticated;
+grant select, insert, update, delete on public.contracts to authenticated;
+grant select on public.contract_history to authenticated;
+grant select, insert, update, delete on public.settings to authenticated;
+grant all on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+grant execute on function public.my_role() to authenticated;

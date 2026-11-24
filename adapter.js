@@ -31,7 +31,7 @@
       return;
     }
     if (mode === 'noaccess') {
-      b.innerHTML = `<p>You are signed in as <b>${esc(session?.user?.email)}</b>, but your access has not been set up yet.</p><p class="muted">Ask the administrator to check that the database setup was run.</p><button class="btn" type="button" id="authOut">Sign out</button>`;
+      b.innerHTML = `<p>You are signed in as <b>${esc(session?.user?.email)}</b>, but your access has not been set up yet.</p><p class="muted">Ask the administrator to check that the database setup was run.</p>${note ? `<p class="muted small">Details: ${esc(note)}</p>` : ''}<button class="btn" type="button" id="authOut">Sign out</button>`;
       document.getElementById('authOut').onclick = () => sb.auth.signOut().then(() => location.reload());
       return;
     }
@@ -87,7 +87,7 @@
     session = s.session;
     if (!session) return screen('login');
     const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
-    if (error || !data) return screen('noaccess');
+    if (error || !data) return screen('noaccess', error ? error.message : 'No profile found for this login.');
     profile = data;
     wrap.remove();
     document.body.classList.remove('locked');
