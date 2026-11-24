@@ -191,8 +191,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=9"></script>
-<script src="adapter.js?v=9"></script>
+<script src="config.js?v=10"></script>
+<script src="adapter.js?v=10"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -397,35 +397,52 @@ function crewBox(c){const cn=crewNow(c),cs=crewSeries(c),cur=crewCurOf(c),per=cr
   <p style="margin:10px 0 0">${tot!=null&&nAdj?`<b>${pct(tot)}</b> since ${money(first.value,cur)}, across ${nAdj} change${nAdj===1?'':'s'}.`:'No changes since the first value.'}<br><span class="muted">Annualised: ${money(cn.value*(per==='day'?365:per==='month'?12:1),cur,0)}</span></p></div>`}
 function editVersionDlg(c,n){
   const x=(c.versions||[]).find(v=>v.n===n);if(!x)return;
-  const orig=n===1;
-  openDlg(`<h2>Edit version ${n}</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Use this to correct what was recorded. To register a new adjustment or renewal, use “New version or adjustment” instead, so the history stays complete. Every correction is written to the change log.</p>
+  const orig=n===1,prev=vers(c).filter(v=>v.n!==n&&(v.eff<x.eff||(v.eff===x.eff&&v.n<n))).pop();
+  const fileName=x.file?.name||(x.file?'Attached file':'');
+  openDlg(`<h2>Edit version ${n}</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Correct any field of this version. To register a new adjustment or renewal, use “New version or adjustment” instead, so the history stays complete. Every correction is written to the change log.</p>
   <div class="fgrid">
-  <label>Type${orig?'<input value="Original" disabled>':`<select id="e-type">${opt(VTYPES,x.type)}</select>`}</label>
+  <label>Type<select id="e-type">${opt(orig?['Original']:VTYPES,orig?'Original':x.type)}</select></label>
   <label>Effective date *<input type="date" id="e-eff" value="${esc(x.eff)}"></label>
+  ${prev?`<label>Adjustment % <span class="hint">vs version ${prev.n}: ${money(prev.value,c.currency)}</span><input type="number" step="0.01" id="e-pct" inputmode="decimal" value="${prev.value?((x.value-prev.value)/prev.value*100).toFixed(2):''}"></label>`:''}
   <label>Value * <span class="hint">${esc(c.currency)} ${PERIODS[c.period]||''}</span><input type="number" step="0.01" min="0" id="e-val" inputmode="decimal" value="${x.value}"></label>
   <label>Index or basis<select id="e-idx">${opt(['',...INDEXES].map(o=>[o,o||'—']),x.index||'')}</select></label>
-  ${orig?'':`<label class="full">End date set by this version <span class="hint">leave empty if this version did not change the end date</span><input type="date" id="e-end" value="${esc(x.end||'')}"></label>`}
+  <label>${orig?'Original end date':'End date set by this version'} <span class="hint">${orig?'leave empty if open-ended':'leave empty if this version did not change the end date'}</span><input type="date" id="e-end" value="${esc(x.end||'')}"></label>
   <label class="full">What changed<textarea id="e-notes" rows="3" maxlength="2000">${esc(x.notes||'')}</textarea></label>
   ${hasCrew(c)?crewFieldsHtml(c,{value:setCrew(x)?x.crewValue:'',members:x.crewMembers||(crewSeries(c).filter(p=>p.eff<=x.eff&&p.n!==x.n).pop()?.members)||'',hint:'Fill in the crew cost that took effect with this version. Leave it empty if the crew cost did not change in this version.'}):''}
+  <fieldset class="full chf"><legend>Document</legend>
+  ${fileName?`<p style="margin:0 0 8px">Current: <b>${esc(fileName)}</b></p><label class="check" style="flex-direction:row;align-items:center;gap:10px;font-weight:500;margin-bottom:10px"><input type="checkbox" id="e-rmfile" style="width:20px;min-height:20px"> Remove this document</label>`:'<p class="hint" style="margin:0 0 8px">No document attached.</p>'}
+  ${assets?`<label>${fileName?'Replace with another file':'Attach a file'} <span class="hint">PDF or image, optional</span><input type="file" id="e-file" accept=".pdf,image/*"></label>`:''}
+  </fieldset>
+  <p class="hint full" style="margin:0">Recorded ${x.at?fdate(x.at.slice(0,10)):''} by ${esc(uname(x.by))}. Who recorded a version is kept for the audit trail and can't be changed.</p>
   </div>
   <div class="dbtn">${S.admin&&!orig?`<button type="button" class="btn danger" data-act="delVer" data-n="${n}" style="margin-right:auto">Delete version</button>`:''}<button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save correction</button></div>`,async()=>{
-    const cvx=hasCrew(c)?val('x-cval'):(setCrew(x)?x.crewValue:'');const nv={...x,crewValue:cvx===''?'':Number(cvx),crewMembers:hasCrew(c)?(Number(val('x-cmem'))||''):(x.crewMembers||''),type:orig?'Original':val('e-type'),eff:val('e-eff'),value:Number(val('e-val')),index:val('e-idx'),notes:val('e-notes'),end:orig?(x.end||''):val('e-end')};
+    const cvx=hasCrew(c)?val('x-cval'):(setCrew(x)?x.crewValue:'');
+    const nv={...x,crewValue:cvx===''?'':Number(cvx),crewMembers:hasCrew(c)?(Number(val('x-cmem'))||''):(x.crewMembers||''),type:orig?'Original':val('e-type'),eff:val('e-eff'),value:Number(val('e-val')),index:val('e-idx'),notes:val('e-notes'),end:val('e-end')};
     if(!nv.eff||val('e-val')===''||!(nv.value>=0))return toast('Please enter the effective date and value.');
     if(nv.end&&nv.end<nv.eff)return toast('The end date is before the effective date.');
+    const nf=await upload(form.querySelector('#e-file'));if(nf===false)return;
+    let fileNote='';
+    if(nf){nv.file=nf;fileNote=x.file?`document replaced (${fileName} → ${nf.name})`:`document attached (${nf.name})`}
+    else if(form.querySelector('#e-rmfile')?.checked){nv.file=null;fileNote=`document removed (${fileName})`}
     const L={type:'Type',eff:'Effective',value:'Value',crewValue:'Crew cost',crewMembers:'Crew members',index:'Index',notes:'Notes',end:'End date'};
     const fmt=(k,v)=>k==='value'?money(v,c.currency):k==='crewValue'?(v===''||v==null?'none':money(v,crewCurOf(c))):(k==='eff'||k==='end')?(v?fdate(v):'none'):(v||'none');
     const ch=Object.keys(L).filter(k=>String(x[k]??'')!==String(nv[k]??'')).map(k=>k==='notes'?'notes updated':`${L[k]} ${fmt(k,x[k])} → ${fmt(k,nv[k])}`);
+    if(fileNote)ch.push(fileNote);
     if(!ch.length){dlg.close();return}
     const now=new Date().toISOString(),body=clone(c);
     body.versions=body.versions.map(v=>v.n===n?{...nv,editedAt:now,editedBy:uid}:v);
     if(setCrew(nv))crewUnits(body);
     const extra=[];
     if(orig&&x.eff!==nv.eff&&c.startDate===x.eff){body.startDate=nv.eff;extra.push(`start date → ${fdate(nv.eff)}`)}
-    if(!orig&&x.end!==nv.end){const latest=[...body.versions].filter(v=>v.end).sort((a,b)=>a.eff<b.eff?-1:1).pop();const ne=latest?latest.end:(c.versions.find(v=>v.n===1)?.end||'');if(ne!==c.endDate){body.endDate=ne;extra.push(`contract end date → ${ne?fdate(ne):'none'}`)}}
+    if((x.end||'')!==(nv.end||'')){const latest=[...body.versions].filter(v=>v.end).sort((a,b)=>a.eff<b.eff?-1:a.eff>b.eff?1:a.n-b.n).pop();const ne=latest?latest.end:'';if(ne!==(c.endDate||'')){body.endDate=ne;if(ne&&body.startDate)body.termMonths=termFromDates(body.startDate,ne)||'';extra.push(`contract end date → ${ne?fdate(ne):'open-ended'}`)}}
     body.log=[...(c.log||[]),{at:now,by:uid,text:`Version ${n} corrected: ${[...ch,...extra].join('; ')}`}];
     await write(c.id,body);dlg.close();toast(`Version ${n} corrected.`);
   });
+  if(prev){const p=form.querySelector('#e-pct'),v=form.querySelector('#e-val');
+    p.addEventListener('input',()=>{const x2=parseFloat(p.value);if(isFinite(x2))v.value=(Math.round(prev.value*(1+x2/100)*100)/100).toString()});
+    v.addEventListener('input',()=>{const x2=parseFloat(v.value);if(isFinite(x2)&&prev.value)p.value=((x2-prev.value)/prev.value*100).toFixed(2)})}
 }
+
 const chartRO=new ResizeObserver(()=>drawChart());
 let chartEl=null;
 function drawChart(){
