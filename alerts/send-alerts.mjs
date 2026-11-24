@@ -75,7 +75,7 @@ export function buildEmail(alerts, today, families, appUrl) {
       ${c.category === 'charter' ? row('Charter', esc([ct === 'TCP' ? 'TCP (time charter party)' : ct === 'Bareboat' ? 'Bareboat charter' : ct, c.vesselName, c.imo ? 'IMO ' + c.imo : ''].filter(Boolean).join(', '))) : ''}
       ${c.category === 'charter' ? row('Ports', esc([c.deliveryPort, c.redeliveryPort].filter(Boolean).join(' to '))) : ''}
       ${ct === 'TCP' ? row('Extension option', esc(c.tcpOption)) : ''}
-      ${(() => { const cv = [...(c.crew?.versions || [])].sort((x, y) => (x.eff < y.eff ? -1 : 1)); let cc = cv[0]; for (const x of cv) if (x.eff <= today) cc = x; return cc ? row('Brazilian crew cost', esc(money(cc.value, c.crew.currency) + ' ' + (PERIODS[c.crew.period] || '') + (cc.members ? ', ' + cc.members + ' crew' : ''))) : ''; })()}
+      ${(() => { const vs = [...(c.versions || [])].filter(x => x.crewValue !== '' && x.crewValue != null).sort((x, y) => (x.eff < y.eff ? -1 : 1)); let cc = vs[0]; for (const x of vs) if (x.eff <= today) cc = x; const cur = c.crewCurrency || c.crew?.currency || 'BRL', per = c.crewPeriod || c.crew?.period || 'month'; return cc ? row('Brazilian crew cost', esc(money(cc.crewValue, cur) + ' ' + (PERIODS[per] || '') + (cc.crewMembers ? ', ' + cc.crewMembers + ' crew' : ''))) : ''; })()}
       ${ct === 'Bareboat' ? row('Purchase option', esc(c.purchaseOption === 'Yes' ? 'Yes' + (c.purchasePrice ? ', ' + money(c.purchasePrice, c.currency) : '') : c.purchaseOption)) : ''}
       ${row('Suggested action', esc(a.action))}
       </table></div>`;
