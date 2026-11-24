@@ -26,6 +26,12 @@ h1,h2,h3,.num{font-stretch:112%;font-weight:800;letter-spacing:-.02em;line-heigh
 h1{font-size:clamp(30px,4.2vw,46px)}
 h2{font-size:clamp(22px,2.4vw,28px)}
 h3{font-size:18px}
+.logos{display:flex;justify-content:space-between;align-items:center;gap:24px;background:#fff;padding:14px max(4vw,16px)}
+.logos img{display:block;height:auto;max-width:42vw}
+.logos .lg-b{width:150px}
+.logos .lg-n{width:190px}
+@media(max-width:600px){.logos .lg-b{width:104px}.logos .lg-n{width:132px}}
+.authbox .logos{padding:12px 14px;margin-bottom:18px}
 .top{border-top:8px solid var(--ink);padding-bottom:16px}
 .head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
 .sub{margin:6px 0 0;color:var(--grey)}
@@ -147,6 +153,7 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 </head>
 <body>
+<div class="logos"><img src="img/logo-bunker-one.png" alt="Bunker One" class="lg-b"><img src="img/logo-nova-offshore.png" alt="NOVA Offshore" class="lg-n"></div>
 <header class="band top"><div class="wrap head">
   <div><h1>Contract Register</h1><p class="sub" id="role" style="margin:0 0 4px;font-weight:600"></p><p class="sub" id="sub">Service contracts and vessel charters in one place, with every version and adjustment kept.</p></div>
   <div class="actions"><button class="btn" id="exportBtn" type="button">Export CSV</button><button class="btn primary" id="newBtn" type="button">New contract</button></div>
@@ -181,8 +188,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=4"></script>
-<script src="adapter.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="adapter.js?v=5"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -214,6 +221,9 @@ const pad=n=>String(n).padStart(2,'0');
 const td0=new Date();const TODAY=`${td0.getFullYear()}-${pad(td0.getMonth()+1)}-${pad(td0.getDate())}`;
 const ms=iso=>{const [y,m,d]=iso.split('-').map(Number);return Date.UTC(y,m-1,d)};
 const addDays=(iso,n)=>new Date(ms(iso)+n*864e5).toISOString().slice(0,10);
+const addMonths=(iso,n)=>{const [y,m,d]=iso.split('-').map(Number);const t=y*12+(m-1)+n,ny=Math.floor(t/12),nm=t%12,last=new Date(Date.UTC(ny,nm+1,0)).getUTCDate();return`${ny}-${pad(nm+1)}-${pad(Math.min(d,last))}`};
+const endFromTerm=(start,months)=>{if(!start||!(months>0))return'';const t=addMonths(start,months);return +start.slice(8)>+t.slice(8)?t:addDays(t,-1)};
+const termFromDates=(start,end)=>{if(!start||!end)return'';for(let n=1;n<=600;n++){const e=endFromTerm(start,n);if(e===end)return n;if(e>end)return''}return''};
 const until=iso=>Math.round((ms(iso)-ms(TODAY))/864e5);
 const fdate=iso=>iso?new Date(ms(iso)).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}):'—';
 const money=(v,cur,dp=2)=>{if(v==null||isNaN(v))return'—';if(cur==='UYU')return'$U\u00a0'+Number(v).toLocaleString('en-US',{maximumFractionDigits:dp});try{return new Intl.NumberFormat('en-US',{style:'currency',currency:cur||'USD',maximumFractionDigits:dp,minimumFractionDigits:0}).format(v)}catch(e){return (cur||'')+' '+Number(v).toLocaleString('en-US')}};
@@ -335,6 +345,7 @@ function renderDetail(c){
     <div><dt>Reference</dt><dd>${esc(c.reference||'—')}</dd></div>
     <div><dt>Responsible</dt><dd>${esc(c.owner||'—')}${c.ownerEmail?`<div class="muted small" style="font-weight:400">${esc(c.ownerEmail)}</div>`:''}</dd></div>
     <div><dt>Start</dt><dd>${fdate(c.startDate)}</dd></div>
+    <div><dt>Term</dt><dd>${(()=>{const t=c.termMonths||termFromDates(c.startDate,c.endDate);return t?t+' month'+(t==1?'':'s'):'—'})()}</dd></div>
     <div><dt>End</dt><dd>${c.endDate?fdate(c.endDate)+(c.endDate>=TODAY?` <span class="muted">(${until(c.endDate)} days)</span>`:''):'Open-ended'}</dd></div>
     <div><dt>Notice deadline</dt><dd class="${nd&&nd>=TODAY&&until(nd)<=60?'st-Expiring':''}">${nd?fdate(nd)+` <span class="muted">(${c.noticeDays} days)</span>`:'—'}</dd></div>
     <div><dt>Renewal</dt><dd>${c.autoRenew?'Automatic unless notice is given':'Manual'}</dd></div>
@@ -414,7 +425,8 @@ function contractDlg(c){
   <label>Billing basis<select id="f-per">${opt(Object.entries(PERIODS),d.period)}</select></label>
   <label class="full">Initial value *<input id="f-val" type="number" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 18500"></label>`:''}
   <label>Start date *<input type="date" id="f-start" value="${esc(d.startDate||'')}"></label>
-  <label>End date <span class="hint">leave empty if open-ended</span><input type="date" id="f-end" value="${esc(d.endDate||'')}"></label>
+  <label>Contract term (months) <span class="hint">fills in the end date</span><input type="number" id="f-term" min="1" max="600" step="1" inputmode="numeric" value="${esc(d.termMonths||termFromDates(d.startDate,d.endDate)||'')}" placeholder="e.g. 24"></label>
+  <label class="full">End date <span class="hint">calculated from start and term; you can also type it, or leave it empty if open-ended</span><input type="date" id="f-end" value="${esc(d.endDate||'')}"></label>
   <label>Notice period (days)<input type="number" min="0" step="1" id="f-notice" value="${d.noticeDays??''}"></label>
   <label>Default adjustment index<select id="f-idx">${opt(INDEXES,d.index)}</select></label>
   <label class="check full"><input type="checkbox" id="f-auto"${d.autoRenew?' checked':''}> Renews automatically unless notice is given</label>
@@ -422,7 +434,7 @@ function contractDlg(c){
   ${isNew&&assets?'<label class="full">Signed contract <span class="hint">PDF or image, optional, up to 20 MB</span><input type="file" id="f-file" accept=".pdf,image/*"></label>':''}
   </div>
   <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">${isNew?'Create contract':'Save changes'}</button></div>`,async()=>{
-    const f={title:val('f-title'),counterparty:val('f-cp'),category:val('f-cat'),reference:val('f-ref'),owner:val('f-owner'),ownerEmail:val('f-oemail'),startDate:val('f-start'),endDate:val('f-end'),noticeDays:Number(val('f-notice'))||0,index:val('f-idx'),autoRenew:form.querySelector('#f-auto').checked,notes:val('f-notes')};
+    const f={title:val('f-title'),counterparty:val('f-cp'),category:val('f-cat'),reference:val('f-ref'),owner:val('f-owner'),ownerEmail:val('f-oemail'),startDate:val('f-start'),endDate:val('f-end'),termMonths:Number(val('f-term'))||'',noticeDays:Number(val('f-notice'))||0,index:val('f-idx'),autoRenew:form.querySelector('#f-auto').checked,notes:val('f-notes')};
     f.services=f.category==='service'?[...form.querySelectorAll('input[name=svc]:checked')].map(x=>x.value):[];
     const ch=f.category==='charter';Object.assign(f,{vesselName:ch?val('f-vessel'):'',imo:ch?val('f-imo'):'',charterType:ch?(form.querySelector('input[name=ctype]:checked')?.value||'TCP'):'',vesselType:ch?val('f-vtype'):'',flag:ch?val('f-flag'):'',dwt:ch?val('f-dwt'):'',deliveryPort:ch?val('f-dport'):'',redeliveryPort:ch?val('f-rport'):''});
     CTF.forEach(([k])=>f[k]='');if(ch)CT[f.charterType].fields.forEach(([k])=>f[k]=val('f-x-'+k));
@@ -438,7 +450,7 @@ function contractDlg(c){
       const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
       await write(ref.id,body);S.open=ref.id;dlg.close();toast('Contract created.');
     }else{
-      const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),charterType:'Charter type',services:'Service families',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
+      const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),charterType:'Charter type',services:'Service families',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',termMonths:'Term (months)',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
       const ch=Object.keys(labels).filter(k=>String(c[k]??'')!==String(f[k]??'')).map(k=>k==='notes'?'Notes updated':`${labels[k]}: ${show(k,c[k])} → ${show(k,f[k])}`);
       if(!ch.length){dlg.close();return}
       const body=clone(c);Object.assign(body,f);body.log=[...(c.log||[]),{at:now,by:uid,text:ch.join('; ')}];
@@ -446,6 +458,10 @@ function contractDlg(c){
     }
   });
   form.querySelectorAll('input[name=ctype]').forEach(r=>r.addEventListener('change',()=>{const v=r.value;form.querySelectorAll('.ctgroup').forEach(g=>g.hidden=g.dataset.ct!==v);form.querySelector('#f-cthint').textContent=CT[v].hint}));
+  {const st=form.querySelector('#f-start'),tm=form.querySelector('#f-term'),en=form.querySelector('#f-end');
+   const calc=()=>{const n=parseInt(tm.value,10);if(st.value&&n>0)en.value=endFromTerm(st.value,n)};
+   st.addEventListener('input',calc);st.addEventListener('change',calc);tm.addEventListener('input',calc);
+   en.addEventListener('change',()=>{tm.value=termFromDates(st.value,en.value)})}
   form.querySelector('#f-cat').addEventListener('change',e=>{form.querySelector('#f-ch').hidden=e.target.value!=='charter';form.querySelector('#f-svc').hidden=e.target.value!=='service'});
 }
 const show=(k,v)=>k==='services'?((v||[]).map(famName).join(', ')||'none'):k==='category'?(CATN[v]||v):k==='autoRenew'?(v?'Yes':'No'):/Date$/.test(k)?(v?fdate(v):'none'):(v===''||v==null?'none':v);
@@ -458,6 +474,7 @@ function versionDlg(c){
   <label>Adjustment %<input type="number" step="0.01" id="v-pct" inputmode="decimal" placeholder="e.g. 4.5"></label>
   <label>New value * <span class="hint">${esc(c.currency)} ${PERIODS[c.period]||''}</span><input type="number" step="0.01" min="0" id="v-val" inputmode="decimal" value="${last.value}"></label>
   <label>Index or basis<select id="v-idx">${opt(INDEXES,c.index||'Negotiated')}</select></label>
+  <label>Extend by (months) <span class="hint">from the current end date</span><input type="number" id="v-ext" min="1" max="600" step="1" inputmode="numeric" placeholder="e.g. 12"></label>
   <label>New end date <span class="hint">for renewals and extensions</span><input type="date" id="v-end"></label>
   <label class="full">What changed<textarea id="v-notes" rows="3" maxlength="2000" placeholder="e.g. Annual IPCA adjustment per clause 7.2"></textarea></label>
   ${assets?'<label class="full">Signed amendment or letter <span class="hint">PDF or image, optional</span><input type="file" id="v-file" accept=".pdf,image/*"></label>':''}
@@ -473,6 +490,7 @@ function versionDlg(c){
     if(end){body.log=[...(c.log||[]),{at:now,by:uid,text:`End date: ${show('endDate',c.endDate)} → ${fdate(end)} (version ${n})`}];body.endDate=end}
     await write(c.id,body);dlg.close();toast(`Version ${n} saved.`);
   });
+  const ext=form.querySelector('#v-ext'),ve=form.querySelector('#v-end');ext.addEventListener('input',()=>{const n=parseInt(ext.value,10);const base=c.endDate||val('v-eff');if(base&&n>0)ve.value=c.endDate?endFromTerm(addDays(c.endDate,1),n):endFromTerm(base,n)});
   const p=form.querySelector('#v-pct'),v=form.querySelector('#v-val');
   p.addEventListener('input',()=>{const x=parseFloat(p.value);if(isFinite(x))v.value=(Math.round(last.value*(1+x/100)*100)/100).toString()});
   v.addEventListener('input',()=>{const x=parseFloat(v.value);if(isFinite(x)&&last.value)p.value=((x-last.value)/last.value*100).toFixed(2)});

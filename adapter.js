@@ -18,7 +18,7 @@
   /* ---------- sign-in screen ---------- */
   const wrap = document.createElement('div');
   wrap.id = 'auth';
-  wrap.innerHTML = '<div class="authbox"><h1>Contract Register</h1><div id="authBody"><p class="muted">Loading…</p></div></div>';
+  wrap.innerHTML = '<div class="authbox"><div class="logos"><img src="img/logo-bunker-one.png" alt="Bunker One" class="lg-b"><img src="img/logo-nova-offshore.png" alt="NOVA Offshore" class="lg-n"></div><h1>Contract Register</h1><div id="authBody"><p class="muted">Loading…</p></div></div>';
   document.body.prepend(wrap);
   document.body.classList.add('locked');
   const body = () => document.getElementById('authBody');
