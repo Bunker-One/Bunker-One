@@ -105,7 +105,7 @@ async function send(to, subject, html) {
 }
 
 async function main() {
-  for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) if (!env[k]) throw new Error(`Missing secret ${k}`);
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) { console.log('Alerts are not set up yet (secrets SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY missing). Nothing to do.'); return; }
   if (env.RESEND_API_KEY && !env.ALERT_FROM) throw new Error('Missing secret ALERT_FROM');
   const today = env.TODAY || todayIn();
   const rows = await supa('contracts?select=id,doc');
