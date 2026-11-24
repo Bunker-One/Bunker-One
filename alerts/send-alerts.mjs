@@ -68,6 +68,7 @@ export function buildEmail(alerts, today, families, appUrl) {
       <table style="font-size:14px;border-collapse:collapse;margin-top:4px">
       ${row('Date', esc(fdate(a.date)))}
       ${row('Supplier', esc(c.counterparty))}
+      ${row('Country', esc(c.country))}
       ${row('Reference', esc(c.reference))}
       ${row('Responsible', esc([c.owner, c.ownerEmail].filter(Boolean).join(', ')))}
       ${row('Current value', esc(money(currentValue(c, today), c.currency) + ' ' + (PERIODS[c.period] || '')))}

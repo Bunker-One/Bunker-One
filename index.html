@@ -176,6 +176,7 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
         <div class="tools">
           <input type="search" id="q" placeholder="Search title, counterparty, reference or person" aria-label="Search">
           <select id="sort" aria-label="Sort"><option value="end">Sort: end date</option><option value="title">Sort: name</option><option value="value">Sort: annual value</option><option value="updated">Sort: last updated</option></select>
+          <select id="ctry" aria-label="Country"></select>
           <select id="svc" aria-label="Service family"></select>
           <label><input type="checkbox" id="arch"> Show archived</label>
           <button class="btn small" id="famBtn" type="button" data-act="fams">Service families</button>
@@ -190,8 +191,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=8"></script>
-<script src="adapter.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="adapter.js?v=9"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -213,12 +214,13 @@ const MILES=[90,60,30,15];
 const CHF=[['vesselName','Vessel'],['imo','IMO number'],['vesselType','Vessel type'],['flag','Flag'],['dwt','Deadweight'],['deliveryPort','Delivery port'],['redeliveryPort','Redelivery port']];
 const validImo=x=>{if(!/^\d{7}$/.test(x))return false;let t=0;for(let i=0;i<6;i++)t+=+x[i]*(7-i);return t%10===+x[6]};
 const CURS=[['BRL','BRL, Brazilian real'],['USD','USD, US dollar'],['UYU','UYU, Uruguayan peso']];
-const S={admin:true,fams:DEF_FAM,svc:'all',contracts:[],loaded:false,tab:'contracts',cat:'all',q:'',sort:'end',arch:false,open:null,canWrite:true,names:{},busy:false};
+const COUNTRIES=['Brazil','Uruguay','Argentina','Colombia'];
+const S={country:'all',admin:true,fams:DEF_FAM,svc:'all',contracts:[],loaded:false,tab:'contracts',cat:'all',q:'',sort:'end',arch:false,open:null,canWrite:true,names:{},busy:false};
 let db=null,user=null,assets=null,downloads=null,uid=null,unsub=null,onSubmit=null;
 
 const famName=id=>S.fams.find(f=>f.id===id)?.name||'';
 const svcTags=c=>(c.services||[]).map(famName).filter(Boolean).map(n=>`<span class="tag">${esc(n)}</span>`).join('');
-const inCat=c=>(S.cat==='all'||c.category===S.cat)&&(S.svc==='all'||(c.services||[]).includes(S.svc));
+const inCat=c=>(S.country==='all'||c.country===S.country)&&(S.cat==='all'||c.category===S.cat)&&(S.svc==='all'||(c.services||[]).includes(S.svc));
 const pad=n=>String(n).padStart(2,'0');
 const td0=new Date();const TODAY=`${td0.getFullYear()}-${pad(td0.getMonth()+1)}-${pad(td0.getDate())}`;
 const ms=iso=>{const [y,m,d]=iso.split('-').map(Number);return Date.UTC(y,m-1,d)};
@@ -305,6 +307,7 @@ function renderKpis(){
 function renderChips(){
   const base=S.contracts.filter(c=>S.arch||!c.archived);
   const cnt=k=>base.filter(c=>k==='all'||c.category===k).length;
+  $('#ctry').innerHTML=`<option value="all">All countries</option>`+COUNTRIES.map(k=>`<option value="${k}"${S.country===k?' selected':''}>${k} (${base.filter(c=>c.country===k).length})</option>`).join('');
   if(S.svc!=='all'&&!S.fams.some(f=>f.id===S.svc))S.svc='all';
   $('#svc').innerHTML=`<option value="all">All service families</option>`+S.fams.map(f=>`<option value="${esc(f.id)}"${S.svc===f.id?' selected':''}>${esc(f.name)} (${base.filter(c=>(c.services||[]).includes(f.id)).length})</option>`).join('');
   $('#famBtn').hidden=!S.canWrite||!S.admin;
@@ -313,7 +316,7 @@ function renderChips(){
 function filtered(){
   const q=S.q.trim().toLowerCase();
   let r=S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c));
-  if(q)r=r.filter(c=>[c.title,c.counterparty,c.reference,c.owner,c.notes,c.vesselName,c.imo,c.deliveryPort,c.redeliveryPort,c.vesselType,normCT(c.charterType),c.charterType&&CT[normCT(c.charterType)].long,...(c.services||[]).map(famName)].join(' ').toLowerCase().includes(q));
+  if(q)r=r.filter(c=>[c.title,c.counterparty,c.country,c.reference,c.owner,c.notes,c.vesselName,c.imo,c.deliveryPort,c.redeliveryPort,c.vesselType,normCT(c.charterType),c.charterType&&CT[normCT(c.charterType)].long,...(c.services||[]).map(famName)].join(' ').toLowerCase().includes(q));
   const k=S.sort;
   r.sort((a,b)=>k==='title'?(a.title||'').localeCompare(b.title||''):k==='value'?annual(b)-annual(a):k==='updated'?(b.updatedAt||'').localeCompare(a.updatedAt||''):(a.endDate||'9999').localeCompare(b.endDate||'9999'));
   return r;
@@ -322,7 +325,7 @@ function renderTable(){
   if(!S.loaded){$('#tableBox').innerHTML='<p class="empty">Loading contracts…</p>';return}
   const r=filtered();
   if(!r.length){$('#tableBox').innerHTML=`<p class="empty">${S.contracts.length?'No contracts match these filters.':'No contracts yet. Use “New contract” to add your first one.'}</p>`;return}
-  $('#tableBox').innerHTML=`<table class="stack"><thead><tr><th>Contract</th><th>Category</th><th class="r">Current value</th><th class="r">Last change</th><th>Ends</th><th>Status</th></tr></thead><tbody>${r.map(c=>{const cu=current(c),lc=lastChange(c),st=status(c);return`<tr class="row" data-open="${esc(c.id)}"><td class="first"><button class="link" type="button" data-open="${esc(c.id)}">${esc(c.title)}</button><div class="muted small">${c.category==='charter'&&c.charterType?`<span class="ctb">${esc(CT[normCT(c.charterType)].label)}</span>`:''}${c.vesselName?esc(c.vesselName)+(c.imo?' (IMO '+esc(c.imo)+')':'')+' — ':''}${esc(c.counterparty)}${c.reference?' — '+esc(c.reference):''}</div>${c.category==='service'&&(c.services||[]).length?`<div>${svcTags(c)}</div>`:''}</td><td>${esc(CATN[c.category]||'Other')}</td><td class="r"><span class="nw">${money(cu.value,c.currency)}<span class="muted small">${PSHORT[c.period]||''}</span></span></td><td class="r nw">${lc?`<div><span class="pos">${pct(lc.chg)}</span><div class="muted small">${fdate(lc.eff)}</div></div>`:'<span class="muted">Original</span>'}</td><td class="nw">${c.endDate?fdate(c.endDate):'<span class="muted">Open-ended</span>'}</td><td><span class="badge st-${st}">${st}</span></td></tr>`}).join('')}</tbody></table>`;
+  $('#tableBox').innerHTML=`<table class="stack"><thead><tr><th>Contract</th><th>Category</th><th class="r">Current value</th><th class="r">Last change</th><th>Ends</th><th>Status</th></tr></thead><tbody>${r.map(c=>{const cu=current(c),lc=lastChange(c),st=status(c);return`<tr class="row" data-open="${esc(c.id)}"><td class="first"><button class="link" type="button" data-open="${esc(c.id)}">${esc(c.title)}</button><div class="muted small">${c.category==='charter'&&c.charterType?`<span class="ctb">${esc(CT[normCT(c.charterType)].label)}</span>`:''}${c.vesselName?esc(c.vesselName)+(c.imo?' (IMO '+esc(c.imo)+')':'')+' — ':''}${esc(c.counterparty)}${c.reference?' — '+esc(c.reference):''}${c.country?' — '+esc(c.country):''}</div>${c.category==='service'&&(c.services||[]).length?`<div>${svcTags(c)}</div>`:''}</td><td>${esc(CATN[c.category]||'Other')}</td><td class="r"><span class="nw">${money(cu.value,c.currency)}<span class="muted small">${PSHORT[c.period]||''}</span></span></td><td class="r nw">${lc?`<div><span class="pos">${pct(lc.chg)}</span><div class="muted small">${fdate(lc.eff)}</div></div>`:'<span class="muted">Original</span>'}</td><td class="nw">${c.endDate?fdate(c.endDate):'<span class="muted">Open-ended</span>'}</td><td><span class="badge st-${st}">${st}</span></td></tr>`}).join('')}</tbody></table>`;
 }
 function renderLog(){
   const q=S.q.trim().toLowerCase();
@@ -366,6 +369,7 @@ function renderDetail(c){
   </div>
   <dl class="facts">
     <div><dt>Category</dt><dd>${esc(CATN[c.category]||'Other')}</dd></div>
+    <div><dt>Country</dt><dd>${c.country?esc(c.country):`<span class="muted">Not set</span>`}</dd></div>
     ${c.category==='service'?`<div style="grid-column:1/-1"><dt>Service families</dt><dd>${svcTags(c)||'<span class="muted">None selected</span>'}</dd></div>`:''}
     <div><dt>Reference</dt><dd>${esc(c.reference||'—')}</dd></div>
     <div><dt>Responsible</dt><dd>${esc(c.owner||'—')}${c.ownerEmail?`<div class="muted small" style="font-weight:400">${esc(c.ownerEmail)}</div>`:''}</dd></div>
@@ -476,6 +480,7 @@ function contractDlg(c){
   <label class="full">Contract title *<input id="f-title" value="${esc(d.title||'')}" placeholder="e.g. Time charter, MV Atlantic Star" maxlength="160"></label>
   <label>Counterparty *<input id="f-cp" value="${esc(d.counterparty||'')}" placeholder="Company name" maxlength="160"></label>
   <label>Category<select id="f-cat">${opt(CATS,d.category)}</select></label>
+  <label>Country of contract *<select id="f-country">${d.country?'':'<option value="" selected disabled>Choose a country</option>'}${opt(COUNTRIES,d.country||'')}</select></label>
   <fieldset id="f-svc" class="full chf"${d.category==='service'?'':' hidden'}><legend>Service families</legend><p class="hint" style="margin:0">Select every type of service this contract covers.</p><div class="famgrid">${S.fams.map(f=>`<label><input type="checkbox" name="svc" value="${esc(f.id)}"${(d.services||[]).includes(f.id)?' checked':''}> ${esc(f.name)}</label>`).join('')}</div></fieldset>
   <fieldset id="f-ch" class="full chf"${d.category==='charter'?'':' hidden'}><legend>Vessel and charter details</legend>
   <div class="fgrid" style="margin-top:4px"><div class="full"><div style="font-size:14px;font-weight:600;margin-bottom:6px">Charter type *</div><div class="seg" role="radiogroup" aria-label="Charter type">${Object.entries(CT).map(([k,t])=>`<label><input type="radio" name="ctype" value="${k}"${(normCT(d.charterType)||'TCP')===k?' checked':''}> ${esc(t.long)}</label>`).join('')}</div><p class="hint" id="f-cthint" style="margin:6px 0 0">${esc(CT[normCT(d.charterType)||'TCP'].hint)}</p></div></div>
@@ -510,11 +515,12 @@ function contractDlg(c){
   ${isNew&&assets?'<label class="full">Signed contract <span class="hint">PDF or image, optional, up to 20 MB</span><input type="file" id="f-file" accept=".pdf,image/*"></label>':''}
   </div>
   <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">${isNew?'Create contract':'Save changes'}</button></div>`,async()=>{
-    const f={title:val('f-title'),counterparty:val('f-cp'),category:val('f-cat'),reference:val('f-ref'),owner:val('f-owner'),ownerEmail:val('f-oemail'),startDate:val('f-start'),endDate:val('f-end'),termMonths:Number(val('f-term'))||'',noticeDays:Number(val('f-notice'))||0,index:val('f-idx'),autoRenew:form.querySelector('#f-auto').checked,notes:val('f-notes')};
+    const f={title:val('f-title'),counterparty:val('f-cp'),category:val('f-cat'),country:val('f-country'),reference:val('f-ref'),owner:val('f-owner'),ownerEmail:val('f-oemail'),startDate:val('f-start'),endDate:val('f-end'),termMonths:Number(val('f-term'))||'',noticeDays:Number(val('f-notice'))||0,index:val('f-idx'),autoRenew:form.querySelector('#f-auto').checked,notes:val('f-notes')};
     f.services=f.category==='service'?[...form.querySelectorAll('input[name=svc]:checked')].map(x=>x.value):[];
     const ch=f.category==='charter';Object.assign(f,{crewCurrency:ch?val('f-crew-cur'):(c?.crewCurrency||''),crewPeriod:ch?val('f-crew-per'):(c?.crewPeriod||''),vesselName:ch?val('f-vessel'):'',imo:ch?val('f-imo'):'',charterType:ch?(form.querySelector('input[name=ctype]:checked')?.value||'TCP'):'',vesselType:ch?val('f-vtype'):'',flag:ch?val('f-flag'):'',dwt:ch?val('f-dwt'):'',deliveryPort:ch?val('f-dport'):'',redeliveryPort:ch?val('f-rport'):''});
     CTF.forEach(([k])=>f[k]='');if(ch)CT[f.charterType].fields.forEach(([k])=>f[k]=val('f-x-'+k));
     if(!f.title||!f.counterparty||!f.startDate)return toast('Please fill in title, counterparty and start date.');
+    if(!f.country)return toast('Please choose the country of the contract.');
     if(f.ownerEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail))return toast('The responsible email does not look right.');
     if(f.imo&&!validImo(f.imo))return toast('That IMO number is not valid: it needs 7 digits with a correct check digit.');
     if(f.endDate&&f.endDate<f.startDate)return toast('The end date is before the start date.');
@@ -527,7 +533,7 @@ function contractDlg(c){
       const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{...(crewOn?{crewValue:Number(cv),crewMembers:Number(val('f-crew-mem'))||''}:{}),n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
       await write(ref.id,body);S.open=ref.id;dlg.close();toast('Contract created.');
     }else{
-      const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),charterType:'Charter type',services:'Service families',crewCurrency:'Crew currency',crewPeriod:'Crew billing basis',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',termMonths:'Term (months)',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
+      const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),country:'Country',charterType:'Charter type',services:'Service families',crewCurrency:'Crew currency',crewPeriod:'Crew billing basis',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',termMonths:'Term (months)',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
       const ch=Object.keys(labels).filter(k=>String(c[k]??'')!==String(f[k]??'')).map(k=>k==='notes'?'Notes updated':`${labels[k]}: ${show(k,c[k])} → ${show(k,f[k])}`);
       if(!ch.length){dlg.close();return}
       const body=clone(c);Object.assign(body,f);body.log=[...(c.log||[]),{at:now,by:uid,text:ch.join('; ')}];
@@ -638,11 +644,12 @@ $('#newBtn').addEventListener('click',()=>{if(!db)return toast('The database is 
 $('#q').addEventListener('input',e=>{S.q=e.target.value;renderBody()});
 $('#sort').addEventListener('change',e=>{S.sort=e.target.value;renderBody()});
 $('#svc').addEventListener('change',e=>{S.svc=e.target.value;render()});
+$('#ctry').addEventListener('change',e=>{S.country=e.target.value;render()});
 $('#arch').addEventListener('change',e=>{S.arch=e.target.checked;render()});
 $('#exportBtn').addEventListener('click',async()=>{
   const q=v=>{const s=String(v??'');return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-  const rows=[['Contract ID','Title','Counterparty','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port','Brazilian crew cost','Crew members','Crew currency','Crew basis']];
-  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort,setCrew(v)?v.crewValue:'',setCrew(v)?(v.crewMembers||''):'',c.category==='charter'?crewCurOf(c):'',c.category==='charter'?(PERIODS[crewPerOf(c)]||''):''])));
+  const rows=[['Contract ID','Title','Counterparty','Country','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port','Brazilian crew cost','Crew members','Crew currency','Crew basis']];
+  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,c.country||'',CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort,setCrew(v)?v.crewValue:'',setCrew(v)?(v.crewMembers||''):'',c.category==='charter'?crewCurOf(c):'',c.category==='charter'?(PERIODS[crewPerOf(c)]||''):''])));
   const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),name=`contracts-${TODAY}.csv`;
   if(downloads){try{await downloads.save({filename:name,data:csv});return}catch(e){if(e?.code==='declined')return}}
   try{await navigator.clipboard.writeText(csv);toast('CSV copied to the clipboard.')}catch(_){toast('Export is not available in this view.')}
