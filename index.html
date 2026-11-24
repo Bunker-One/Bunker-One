@@ -188,8 +188,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=5"></script>
-<script src="adapter.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="adapter.js?v=6"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -200,7 +200,7 @@ const CATN=Object.fromEntries(CATS);
 const PERIODS={day:'per day',month:'per month',year:'per year',total:'contract total'};
 const PSHORT={day:'/day',month:'/mo',year:'/yr',total:' total'};
 const VTYPES=['Price adjustment','Amendment','Renewal','Correction'];
-const INDEXES=['IPCA','IGP-M','INPC','US CPI','IPC (Uruguay)','UI (Unidad Indexada)','Fixed rate','Market rate','Negotiated','Other'];
+const INDEXES=['IPCA','IGP-M','INPC','US CPI','IPC (Uruguay)','UI (Unidad Indexada)','Collective agreement (CCT)','Fixed rate','Market rate','Negotiated','Other'];
 const CT={
  TCP:{label:'TCP',long:'TCP, time charter party',hint:'Owner keeps the crew and technical management; you pay daily hire and buy the bunkers.',fields:[['tcpOption','Extension option','text','e.g. +1 year at charterers’ option'],['bunkersDelivery','Bunkers on delivery (mt)','number'],['bunkersRedelivery','Bunkers on redelivery (mt)','number'],['speedCons','Speed and consumption warranty','text','e.g. 13.5 kn on 28 mt VLSFO'],['offHire','Off-hire days to date','number'],['commission','Commissions (%)','number']]},
  Bareboat:{label:'Bareboat',long:'Bareboat charter (BBC)',hint:'You crew, operate, insure and maintain the vessel; the owner only provides the hull.',fields:[['purchaseOption','Purchase option','select',['No','Yes']],['purchasePrice','Purchase option price','number'],['insuranceBy','Insurance (H&M, P&I) by','select',['Charterer','Owner']],['drydockBy','Dry-docking by','select',['Charterer','Owner']],['classSociety','Classification society','text','e.g. DNV, ABS, BV'],['nextDrydock','Next dry-docking due','date']]},
@@ -233,6 +233,9 @@ const uname=id=>id?(S.names[id]||'Team member'):'Sample data';
 
 /* derived data */
 const vers=c=>[...(c.versions||[])].sort((a,b)=>a.eff<b.eff?-1:a.eff>b.eff?1:a.n-b.n);
+function crewV(c){const v=[...(c.crew?.versions||[])].sort((a,b)=>a.eff<b.eff?-1:a.eff>b.eff?1:a.n-b.n);return v.map((x,i)=>({...x,chg:i&&v[i-1].value?((x.value-v[i-1].value)/v[i-1].value*100):null}))}
+function crewCur(c){const v=crewV(c);let cur=v[0];for(const x of v)if(x.eff<=TODAY)cur=x;return cur}
+const hasCrew=c=>c.category==='charter'&&(normCT(c.charterType)==='TCP'||(c.crew?.versions||[]).length);
 function withChange(c){const v=vers(c);return v.map((x,i)=>({...x,chg:i?((x.value-v[i-1].value)/v[i-1].value*100):null}))}
 function current(c){const v=vers(c);let cur=v[0];for(const x of v)if(x.eff<=TODAY)cur=x;return cur||{value:0}}
 function lastChange(c){const v=withChange(c).filter(x=>x.eff<=TODAY&&x.chg!=null);return v[v.length-1]}
@@ -301,9 +304,9 @@ function renderTable(){
 }
 function renderLog(){
   const q=S.q.trim().toLowerCase();
-  const rows=S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c)).flatMap(c=>withChange(c).filter(v=>v.n>1).map(v=>({c,v}))).filter(({c,v})=>!q||[c.title,c.counterparty,v.notes,v.index,v.type].join(' ').toLowerCase().includes(q)).sort((a,b)=>b.v.eff.localeCompare(a.v.eff));
+  const rows=S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c)).flatMap(c=>[...withChange(c).filter(v=>v.n>1).map(v=>({c,v,cur:c.currency,per:c.period,lab:`${esc(v.type)} <span class="muted small">v${v.n}</span>`})),...crewV(c).filter(v=>v.chg!=null).map(v=>({c,v:{...v,type:'Brazilian crew cost'},cur:c.crew.currency,per:c.crew.period,lab:'Brazilian crew cost'}))]).filter(({c,v})=>!q||[c.title,c.counterparty,v.notes,v.index,v.type].join(' ').toLowerCase().includes(q)).sort((a,b)=>b.v.eff.localeCompare(a.v.eff));
   if(!rows.length){$('#tableBox').innerHTML='<p class="empty">No adjustments or amendments recorded yet.</p>';return}
-  $('#tableBox').innerHTML=`<table class="stack"><thead><tr><th>Effective</th><th>Contract</th><th>Type</th><th>Index</th><th class="r">Change</th><th class="r">New value</th></tr></thead><tbody>${rows.map(({c,v})=>`<tr class="row" data-open="${esc(c.id)}"><td class="nw first">${fdate(v.eff)}${v.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td><button class="link" type="button" data-open="${esc(c.id)}">${esc(c.title)}</button><div class="muted small">${esc(v.notes||'')}</div></td><td>${esc(v.type)} <span class="muted small">v${v.n}</span></td><td>${esc(v.index||'—')}</td><td class="r nw pos">${pct(v.chg)}</td><td class="r nw"><span>${money(v.value,c.currency)}<span class="muted small">${PSHORT[c.period]||''}</span></span></td></tr>`).join('')}</tbody></table>`;
+  $('#tableBox').innerHTML=`<table class="stack"><thead><tr><th>Effective</th><th>Contract</th><th>Type</th><th>Index</th><th class="r">Change</th><th class="r">New value</th></tr></thead><tbody>${rows.map(({c,v,cur,per,lab})=>`<tr class="row" data-open="${esc(c.id)}"><td class="nw first">${fdate(v.eff)}${v.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td><button class="link" type="button" data-open="${esc(c.id)}">${esc(c.title)}</button><div class="muted small">${esc(v.notes||'')}</div></td><td>${lab}</td><td>${esc(v.index||'—')}</td><td class="r nw pos">${pct(v.chg)}</td><td class="r nw"><span>${money(v.value,cur)}<span class="muted small">${PSHORT[per]||''}</span></span></td></tr>`).join('')}</tbody></table>`;
 }
 function renderAlerts(){
   const q=S.q.trim().toLowerCase();
@@ -320,6 +323,7 @@ function renderDeadlines(){
     if(c.endDate&&c.endDate>=TODAY&&c.endDate<=lim)ev.push({d:c.endDate,k:c.autoRenew?'Renews automatically':'Contract ends',c});
     if(c.category==='charter'&&normCT(c.charterType)==='Bareboat'&&c.nextDrydock&&c.nextDrydock>=TODAY&&c.nextDrydock<=lim)ev.push({d:c.nextDrydock,k:'Dry-docking due',c});
     (c.versions||[]).filter(v=>v.eff>TODAY&&v.eff<=lim).forEach(v=>ev.push({d:v.eff,k:v.type+' takes effect',c}));
+    (c.crew?.versions||[]).filter(v=>v.eff>TODAY&&v.eff<=lim).forEach(v=>ev.push({d:v.eff,k:'Crew cost change takes effect',c}));
   });
   ev.sort((a,b)=>a.d.localeCompare(b.d));
   $('#deadlines').innerHTML=ev.length?ev.slice(0,9).map(e=>{const u=until(e.d),dt=new Date(ms(e.d));return`<li class="${u<=30?'hot':''}" data-open="${esc(e.c.id)}" tabindex="0"><div><div class="d">${dt.getUTCDate()}</div><div class="m">${dt.toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'})}</div></div><div><div class="k">${esc(e.k)}</div><div>${esc(e.c.title)}</div><div class="in">${u===0?'Today':u===1?'Tomorrow':'In '+u+' days'}</div></div></li>`}).join(''):'<li style="cursor:default;display:block" class="muted">Nothing due in the next 12 months.</li>';
@@ -354,12 +358,55 @@ function renderDetail(c){
   </dl>
   ${c.category==='charter'?`<h3 style="margin-top:28px;border-bottom:2px solid var(--ink);padding-bottom:8px">Vessel and charter${c.charterType?` <span class="ctb" style="font-size:16px;padding:2px 10px;margin-left:8px">${esc(CT[normCT(c.charterType)].label)}</span>`:''}</h3>${c.charterType?`<p class="muted" style="margin:8px 0 0">${esc(CT[normCT(c.charterType)].long)}. ${esc(CT[normCT(c.charterType)].hint)}</p>`:''}<dl class="facts" style="margin-top:8px">${[...CHF,...(CT[normCT(c.charterType)]?.fields||[])].map(([k,l])=>`<div><dt>${l}</dt><dd>${k==='dwt'&&c.dwt?Number(c.dwt).toLocaleString('en-US')+' t':(k==='nextDrydock'&&c[k]?fdate(c[k]):k==='purchasePrice'&&c[k]?money(Number(c[k]),c.currency,0):k==='commission'&&c[k]?esc(c[k])+'%':esc(c[k]||'—'))}${k==='imo'&&c.imo&&!validImo(String(c.imo))?' <span class="st-Expiring small">check digit invalid</span>':''}</dd></div>`).join('')}</dl>`:''}
   ${c.notes?`<p style="max-width:70ch">${esc(c.notes)}</p>`:''}
+  ${hasCrew(c)?crewSection(c,w):''}
   <div class="sec"><h3>Version history <span class="muted small" style="font-weight:600">${v.length} version${v.length===1?'':'s'}</span></h3>
   <div class="scroll"><table class="stack"><thead><tr><th>Version</th><th>Effective</th><th>Type</th><th class="r">Value</th><th class="r">Change</th><th>Index</th><th>What changed</th><th>Document</th><th>Recorded</th></tr></thead><tbody>
   ${[...v].reverse().map(x=>`<tr><td class="first"><b class="num" style="font-size:18px">v${x.n}</b>${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td class="nw">${fdate(x.eff)}</td><td>${esc(x.type)}</td><td class="r nw">${money(x.value,c.currency)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td><td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}${x.end?`<div class="muted small">End date set to ${fdate(x.end)}</div>`:''}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):(w&&assets?`<button class="btn small" type="button" data-act="attach" data-n="${x.n}">Attach</button>`:'<span class="muted">—</span>')}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join('')}
   </tbody></table></div></div>
   ${(c.log||[]).length?`<div class="sec"><h3>Change log</h3><ul class="log">${[...c.log].reverse().map(l=>`<li><b class="nw">${fdate(l.at.slice(0,10))}</b> <span class="muted">${esc(uname(l.by))}</span><div>${esc(l.text)}</div></li>`).join('')}</ul></div>`:''}`;
   drawChart();
+}
+function crewSection(c,w){
+  const v=crewV(c);
+  if(!v.length)return`<div class="sec"><h3>Brazilian crew cost</h3><p class="muted" style="max-width:70ch">Track what the Brazilian crew costs on this charter, with every adjustment kept, separately from the hire.</p>${w?'<button class="btn" type="button" data-act="crew">Add Brazilian crew cost</button>':''}</div>`;
+  const cu=crewCur(c)||v[0],first=v[0],cur=c.crew.currency,per=c.crew.period,nAdj=v.filter(x=>x.chg!=null&&x.eff<=TODAY).length;
+  const tot=first.value&&cu.value?((cu.value-first.value)/first.value*100):null;
+  return`<div class="sec"><h3>Brazilian crew cost <span>${w?'<button class="btn small" type="button" data-act="crew">Update crew cost</button>':''}</span></h3>
+  <div style="display:flex;flex-wrap:wrap;gap:12px 40px;align-items:baseline;margin:12px 0 6px"><div><div class="num" style="font-size:clamp(28px,3.4vw,40px);white-space:nowrap">${money(cu.value,cur)}</div><div class="muted">${esc(cur)} ${PERIODS[per]||''}${cu.members?` · ${cu.members} crew member${cu.members==1?'':'s'}`:''}</div></div>
+  <div>${tot!=null&&nAdj?`<b>${pct(tot)}</b> since the first value of ${money(first.value,cur)}, across ${nAdj} change${nAdj===1?'':'s'}.`:'No changes since the first value.'}${per!=='total'?`<br><span class="muted">Annualised: ${money(cu.value*(per==='day'?365:per==='month'?12:1),cur,0)}</span>`:''}</div></div>
+  <div class="scroll"><table class="stack"><thead><tr><th>Effective</th><th class="r">Value</th><th class="r">Change</th><th class="r">Crew members</th><th>Basis</th><th>Notes</th><th>Document</th><th>Recorded</th></tr></thead><tbody>
+  ${[...v].reverse().map(x=>`<tr><td class="nw first">${fdate(x.eff)}${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}</td><td class="r nw">${money(x.value,cur)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td><td class="r">${x.members||'—'}</td><td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):'<span class="muted">—</span>'}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+function crewDlg(c){
+  const v=crewV(c),last=v[v.length-1],isFirst=!last;
+  const cur=c.crew?.currency||'BRL',per=c.crew?.period||'month';
+  openDlg(`<h2>${isFirst?'Add Brazilian crew cost':'Update Brazilian crew cost'}</h2><p class="hint" style="font-size:15px">${esc(c.title)}${c.vesselName?', '+esc(c.vesselName):''}. ${isFirst?'Enter the crew cost as it stands; later changes are added as updates, so the history stays complete.':`Latest value <b>${money(last.value,cur)}</b> ${PERIODS[per]||''}. Enter either the adjustment percentage or the new value.`}</p>
+  <div class="fgrid">
+  ${isFirst?`<label>Currency<select id="c-cur">${opt(CURS,'BRL')}</select></label><label>Billing basis<select id="c-per">${opt(Object.entries(PERIODS).filter(([k])=>k!=='total'),'month')}</select></label>`:''}
+  <label>Effective date *<input type="date" id="c-eff" value="${isFirst?(c.startDate&&c.startDate<=TODAY?c.startDate:TODAY):TODAY}"></label>
+  ${isFirst?'':'<label>Adjustment %<input type="number" step="0.01" id="c-pct" inputmode="decimal" placeholder="e.g. 5.2"></label>'}
+  <label>${isFirst?'Crew cost':'New crew cost'} *<input type="number" step="0.01" min="0" id="c-val" inputmode="decimal" value="${isFirst?'':last.value}"></label>
+  <label>Crew members <span class="hint">optional</span><input type="number" step="1" min="0" id="c-mem" inputmode="numeric" value="${esc(last?.members||'')}"></label>
+  <label>Basis of the value or change<select id="c-idx">${opt(INDEXES,last?.index||'Collective agreement (CCT)')}</select></label>
+  <label class="full">Notes<textarea id="c-notes" rows="3" maxlength="2000" placeholder="${isFirst?'e.g. 14 Brazilian crew, wages and social charges':'e.g. CCT 2026/2027, 5.2% on wages'}"></textarea></label>
+  ${assets?'<label class="full">Supporting document <span class="hint">PDF or image, optional</span><input type="file" id="c-file" accept=".pdf,image/*"></label>':''}
+  </div>
+  <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save crew cost</button></div>`,async()=>{
+    const value=Number(val('c-val')),eff=val('c-eff');
+    if(!eff||val('c-val')===''||!(value>=0))return toast('Please enter the effective date and the crew cost.');
+    const file=await upload(form.querySelector('#c-file'));if(file===false)return;
+    const now=new Date().toISOString(),body=clone(c);
+    const crew=body.crew&&body.crew.versions?body.crew:{currency:val('c-cur')||'BRL',period:val('c-per')||'month',versions:[]};
+    const n=Math.max(0,...crew.versions.map(x=>x.n))+1;
+    crew.versions=[...crew.versions,{n,eff,value,members:Number(val('c-mem'))||'',index:val('c-idx'),notes:val('c-notes'),file,at:now,by:uid}];
+    body.crew=crew;
+    body.log=[...(c.log||[]),{at:now,by:uid,text:isFirst?`Brazilian crew cost added: ${money(value,crew.currency)} ${PERIODS[crew.period]} from ${fdate(eff)}`:`Brazilian crew cost: ${money(last.value,crew.currency)} → ${money(value,crew.currency)} (${pct(last.value?(value-last.value)/last.value*100:null)}) from ${fdate(eff)}`}];
+    await write(c.id,body);dlg.close();toast('Crew cost saved.');
+  });
+  if(!isFirst){const p=form.querySelector('#c-pct'),vv=form.querySelector('#c-val');
+    p.addEventListener('input',()=>{const x=parseFloat(p.value);if(isFinite(x))vv.value=(Math.round(last.value*(1+x/100)*100)/100).toString()});
+    vv.addEventListener('input',()=>{const x=parseFloat(vv.value);if(isFinite(x)&&last.value)p.value=((x-last.value)/last.value*100).toFixed(2)})}
 }
 const chartRO=new ResizeObserver(()=>drawChart());
 let chartEl=null;
@@ -542,6 +589,7 @@ document.addEventListener('click',async e=>{
   else if(a==='back'){S.open=null;render()}
   else if(a==='edit'&&c)contractDlg(c);
   else if(a==='addVersion'&&c)versionDlg(c);
+  else if(a==='crew'&&c&&S.canWrite)crewDlg(c);
   else if(a==='archive'&&c){const b=clone(c);b.archived=!c.archived;b.log=[...(c.log||[]),{at:new Date().toISOString(),by:uid,text:c.archived?'Restored from archive':'Archived'}];try{await write(c.id,b);toast(c.archived?'Contract restored.':'Contract archived.')}catch(_){}}
   else if(a==='delete'&&c&&S.admin)confirmDlg('Delete this contract?',`<b>${esc(c.title)}</b> and its ${(c.versions||[]).length} version(s) will be removed for everyone. This can't be undone. Archiving keeps the history instead.`,'Delete permanently',async()=>{await db.collection('contracts').doc(c.id).delete();S.open=null;toast('Contract deleted.')});
   else if(a==='attach'&&c){const n=Number(t.dataset.n),inp=document.createElement('input');inp.type='file';inp.accept='.pdf,image/*';inp.onchange=async()=>{const file=await upload(inp);if(!file)return;const b=clone(c);b.versions=b.versions.map(x=>x.n===n?{...x,file}:x);try{await write(c.id,b);toast('Document attached to version '+n+'.')}catch(_){}};inp.click()}
@@ -558,8 +606,8 @@ $('#svc').addEventListener('change',e=>{S.svc=e.target.value;render()});
 $('#arch').addEventListener('change',e=>{S.arch=e.target.checked;render()});
 $('#exportBtn').addEventListener('click',async()=>{
   const q=v=>{const s=String(v??'');return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-  const rows=[['Contract ID','Title','Counterparty','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port']];
-  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort])));
+  const rows=[['Contract ID','Title','Counterparty','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port','Brazilian crew cost (current)','Crew currency','Crew basis','Crew members']];
+  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort,...(cc=>cc?[cc.value,c.crew.currency,PERIODS[c.crew.period]||'',cc.members||'']:['','','',''])(crewCur(c))])));
   const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),name=`contracts-${TODAY}.csv`;
   if(downloads){try{await downloads.save({filename:name,data:csv});return}catch(e){if(e?.code==='declined')return}}
   try{await navigator.clipboard.writeText(csv);toast('CSV copied to the clipboard.')}catch(_){toast('Export is not available in this view.')}
