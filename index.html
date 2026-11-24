@@ -191,8 +191,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=10"></script>
-<script src="adapter.js?v=10"></script>
+<script src="config.js?v=11"></script>
+<script src="adapter.js?v=11"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -519,9 +519,12 @@ function contractDlg(c){
   <label>Reference no.<input id="f-ref" value="${esc(d.reference||'')}" maxlength="80"></label>
   <label>Responsible person<input id="f-owner" value="${esc(d.owner||'')}" maxlength="80"></label>
   <label class="full">Responsible email <span class="hint">receives the 90, 60, 30 and 15-day alerts for this contract</span><input type="email" id="f-oemail" value="${esc(d.ownerEmail||'')}" maxlength="120" placeholder="name@company.com"></label>
-  ${isNew?`<label>Currency<select id="f-cur">${opt(CURS,d.currency)}</select></label>
+  <label>Currency<select id="f-cur">${opt(CURS,d.currency)}</select></label>
   <label>Billing basis<select id="f-per">${opt(Object.entries(PERIODS),d.period)}</select></label>
-  <label class="full">Initial value *<input id="f-val" type="number" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 18500"></label>`:''}
+  ${isNew?'':`<fieldset class="full chf" id="f-conv" hidden><legend>What to do with the values already recorded</legend>
+  <label class="check" style="flex-direction:row;align-items:flex-start;gap:10px;font-weight:500"><input type="radio" name="conv" value="convert" checked style="width:20px;min-height:20px;margin-top:2px"> <span>Convert every version’s value to the new basis <span class="hint" id="f-convhint"></span></span></label>
+  <label class="check" style="flex-direction:row;align-items:flex-start;gap:10px;font-weight:500;margin-top:8px"><input type="radio" name="conv" value="keep" style="width:20px;min-height:20px;margin-top:2px"> <span>Keep the numbers as they are <span class="hint">(choose this if the amounts were already per ${'${'}basis${'}'} and only the label was wrong)</span></span></label></fieldset>`}
+  ${isNew?`<label class="full">Initial value *<input id="f-val" type="number" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 18500"></label>`:''}
   <label>Start date *<input type="date" id="f-start" value="${esc(d.startDate||'')}"></label>
   <label>Contract term (months) <span class="hint">fills in the end date</span><input type="number" id="f-term" min="1" max="600" step="1" inputmode="numeric" value="${esc(d.termMonths||termFromDates(d.startDate,d.endDate)||'')}" placeholder="e.g. 24"></label>
   <label class="full">End date <span class="hint">calculated from start and term; you can also type it, or leave it empty if open-ended</span><input type="date" id="f-end" value="${esc(d.endDate||'')}"></label>
@@ -550,10 +553,14 @@ function contractDlg(c){
       const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{...(crewOn?{crewValue:Number(cv),crewMembers:Number(val('f-crew-mem'))||''}:{}),n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
       await write(ref.id,body);S.open=ref.id;dlg.close();toast('Contract created.');
     }else{
-      const labels={...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),country:'Country',charterType:'Charter type',services:'Service families',crewCurrency:'Crew currency',crewPeriod:'Crew billing basis',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',termMonths:'Term (months)',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
+      f.currency=val('f-cur');f.period=val('f-per');
+      const labels={currency:'Currency',period:'Billing basis',...Object.fromEntries(CHF),...Object.fromEntries(CTF.map(x=>[x[0],x[1]])),country:'Country',charterType:'Charter type',services:'Service families',crewCurrency:'Crew currency',crewPeriod:'Crew billing basis',title:'Title',counterparty:'Counterparty',category:'Category',reference:'Reference',owner:'Responsible',ownerEmail:'Responsible email',startDate:'Start date',termMonths:'Term (months)',endDate:'End date',noticeDays:'Notice period',index:'Default index',autoRenew:'Automatic renewal',notes:'Notes'};
       const ch=Object.keys(labels).filter(k=>String(c[k]??'')!==String(f[k]??'')).map(k=>k==='notes'?'Notes updated':`${labels[k]}: ${show(k,c[k])} → ${show(k,f[k])}`);
       if(!ch.length){dlg.close();return}
-      const body=clone(c);Object.assign(body,f);body.log=[...(c.log||[]),{at:now,by:uid,text:ch.join('; ')}];
+      const body=clone(c);Object.assign(body,f);
+      const conv=form.querySelector('input[name=conv]:checked')?.value,fac=perYearFactor(c.period,f.period);
+      if(f.period!==c.period&&conv==='convert'&&fac){body.versions=body.versions.map(v=>({...v,value:Math.round(v.value*fac*100)/100}));ch.push(`all ${body.versions.length} version values converted from ${PERIODS[c.period]} to ${PERIODS[f.period]}`)}
+      body.log=[...(c.log||[]),{at:now,by:uid,text:ch.join('; ')}];
       await write(c.id,body);dlg.close();toast('Changes saved and logged.');
     }
   });
@@ -562,9 +569,14 @@ function contractDlg(c){
    const calc=()=>{const n=parseInt(tm.value,10);if(st.value&&n>0)en.value=endFromTerm(st.value,n)};
    st.addEventListener('input',calc);st.addEventListener('change',calc);tm.addEventListener('input',calc);
    en.addEventListener('change',()=>{tm.value=termFromDates(st.value,en.value)})}
+  {const per=form.querySelector('#f-per'),cv=form.querySelector('#f-conv'),hint=form.querySelector('#f-convhint');let touched=!isNew;
+   per.addEventListener('change',()=>{touched=true;if(!cv)return;const fac=perYearFactor(c.period,per.value);cv.hidden=per.value===c.period||!fac;
+     if(fac){const v=current(c).value;hint.textContent=`(e.g. current ${money(v,c.currency)} ${PERIODS[c.period]} becomes ${money(Math.round(v*fac*100)/100,c.currency)} ${PERIODS[per.value]}; a year is taken as 365 days)`}});
+   form.querySelector('#f-cat').addEventListener('change',e=>{if(isNew&&!touched&&e.target.value==='charter')per.value='day'})}
   form.querySelector('#f-cat').addEventListener('change',e=>{form.querySelector('#f-ch').hidden=e.target.value!=='charter';form.querySelector('#f-svc').hidden=e.target.value!=='service'});
 }
-const show=(k,v)=>k==='services'?((v||[]).map(famName).join(', ')||'none'):k==='category'?(CATN[v]||v):k==='autoRenew'?(v?'Yes':'No'):/Date$/.test(k)?(v?fdate(v):'none'):(v===''||v==null?'none':v);
+const perYearFactor=(from,to)=>{const Y={day:365,month:12,year:1};return Y[from]&&Y[to]?Y[from]/Y[to]:null};
+const show=(k,v)=>k==='period'?(PERIODS[v]||v):k==='services'?((v||[]).map(famName).join(', ')||'none'):k==='category'?(CATN[v]||v):k==='autoRenew'?(v?'Yes':'No'):/Date$/.test(k)?(v?fdate(v):'none'):(v===''||v==null?'none':v);
 function versionDlg(c){
   const last=vers(c).slice(-1)[0]||{value:0};
   openDlg(`<h2>New version</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Latest value <b>${money(last.value,c.currency)}</b> ${PERIODS[c.period]||''}. Enter either the adjustment percentage or the new value.</p>
