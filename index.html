@@ -97,6 +97,12 @@ tbody tr.row:hover{background:var(--soft)}
 @media(min-width:860px){.dtop{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}}
 .big{font-size:clamp(36px,5vw,60px);white-space:nowrap;font-variant-numeric:tabular-nums}
 .fig{position:relative;min-height:260px;border-left:1px solid var(--line)}
+.lnrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px 10px;align-items:end;padding:10px 0;border-bottom:1px solid var(--line)}
+.lnrow label{font-size:13px!important}
+.lnrow label:nth-child(1){grid-column:1/2}
+.lnrow label:nth-child(2){grid-column:2/5}
+.lnrow .ln-rm{margin-bottom:4px}
+@media(max-width:700px){.lnrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.lnrow label:nth-child(1),.lnrow label:nth-child(2){grid-column:1/-1}.lnrow .ln-rm{grid-column:1/-1;justify-self:start}}
 .fig.two{min-height:430px}
 .crewbox{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}
 .fig>svg{position:absolute;inset:0;width:100%;height:100%}
@@ -191,8 +197,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=12"></script>
-<script src="adapter.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="adapter.js?v=13"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -316,7 +322,7 @@ function renderChips(){
 function filtered(){
   const q=S.q.trim().toLowerCase();
   let r=S.contracts.filter(c=>(S.arch||!c.archived)&&inCat(c));
-  if(q)r=r.filter(c=>[c.title,c.counterparty,c.country,c.reference,c.owner,c.notes,c.vesselName,c.imo,c.deliveryPort,c.redeliveryPort,c.vesselType,normCT(c.charterType),c.charterType&&CT[normCT(c.charterType)].long,...(c.services||[]).map(famName)].join(' ').toLowerCase().includes(q));
+  if(q)r=r.filter(c=>[c.title,c.counterparty,c.country,c.reference,c.owner,c.notes,c.vesselName,c.imo,c.deliveryPort,c.redeliveryPort,c.vesselType,normCT(c.charterType),c.charterType&&CT[normCT(c.charterType)].long,...(c.services||[]).map(famName),...(c.versions||[]).flatMap(v=>linesOf(v).map(l=>l.desc))].join(' ').toLowerCase().includes(q));
   const k=S.sort;
   r.sort((a,b)=>k==='title'?(a.title||'').localeCompare(b.title||''):k==='value'?annual(b)-annual(a):k==='updated'?(b.updatedAt||'').localeCompare(a.updatedAt||''):(a.endDate||'9999').localeCompare(b.endDate||'9999'));
   return r;
@@ -383,9 +389,10 @@ function renderDetail(c){
   </dl>
   ${c.category==='charter'?`<h3 style="margin-top:28px;border-bottom:2px solid var(--ink);padding-bottom:8px">Vessel and charter${c.charterType?` <span class="ctb" style="font-size:16px;padding:2px 10px;margin-left:8px">${esc(CT[normCT(c.charterType)].label)}</span>`:''}</h3>${c.charterType?`<p class="muted" style="margin:8px 0 0">${esc(CT[normCT(c.charterType)].long)}. ${esc(CT[normCT(c.charterType)].hint)}</p>`:''}<dl class="facts" style="margin-top:8px">${[...CHF,...(CT[normCT(c.charterType)]?.fields||[])].map(([k,l])=>`<div><dt>${l}</dt><dd>${k==='dwt'&&c.dwt?Number(c.dwt).toLocaleString('en-US')+' t':(k==='nextDrydock'&&c[k]?fdate(c[k]):k==='purchasePrice'&&c[k]?money(Number(c[k]),c.currency,0):k==='commission'&&c[k]?esc(c[k])+'%':esc(c[k]||'—'))}${k==='imo'&&c.imo&&!validImo(String(c.imo))?' <span class="st-Expiring small">check digit invalid</span>':''}</dd></div>`).join('')}</dl>`:''}
   ${c.notes?`<p style="max-width:70ch">${esc(c.notes)}</p>`:''}
+  ${isSvc(c)?linesSection(c,cu):''}
   <div class="sec"><h3>Version history <span class="muted small" style="font-weight:600">${v.length} version${v.length===1?'':'s'}</span></h3>
   <div class="scroll"><table class="stack"><thead><tr><th>Version</th><th>Effective</th><th>Type</th><th class="r">Value</th><th class="r">Change</th>${hasCrew(c)?'<th class="r">Crew cost</th>':''}<th>Index</th><th>What changed</th><th>Document</th><th>Recorded</th></tr></thead><tbody>
-  ${(cm=>[...v].reverse().map(x=>`<tr><td class="first"><b class="num" style="font-size:18px">v${x.n}</b>${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}${w?`<div><button class="btn small" type="button" data-act="editVer" data-n="${x.n}" style="margin-top:6px">Edit</button></div>`:''}</td><td class="nw">${fdate(x.eff)}</td><td>${esc(x.type)}</td><td class="r nw">${money(x.value,c.currency)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td>${hasCrew(c)?`<td class="r nw">${cm[x.n]?`${money(cm[x.n].value,crewCurOf(c))}${cm[x.n].chg!=null?`<div class="small pos">${pct(cm[x.n].chg)}</div>`:''}${cm[x.n].members?`<div class="muted small">${cm[x.n].members} crew</div>`:''}`:'<span class="muted">unchanged</span>'}</td>`:''}<td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}${x.end?`<div class="muted small">End date set to ${fdate(x.end)}</div>`:''}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):(w&&assets?`<button class="btn small" type="button" data-act="attach" data-n="${x.n}">Attach</button>`:'<span class="muted">—</span>')}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join(''))(Object.fromEntries(crewSeries(c).map(p=>[p.n,p])))}
+  ${(cm=>[...v].reverse().map(x=>`<tr><td class="first"><b class="num" style="font-size:18px">v${x.n}</b>${x.eff>TODAY?' <span class="badge st-Upcoming">Scheduled</span>':''}${w?`<div><button class="btn small" type="button" data-act="editVer" data-n="${x.n}" style="margin-top:6px">Edit</button></div>`:''}</td><td class="nw">${fdate(x.eff)}</td><td>${esc(x.type)}</td><td class="r nw">${money(x.value,c.currency)}</td><td class="r nw pos">${x.chg==null?'—':pct(x.chg)}</td>${hasCrew(c)?`<td class="r nw">${cm[x.n]?`${money(cm[x.n].value,crewCurOf(c))}${cm[x.n].chg!=null?`<div class="small pos">${pct(cm[x.n].chg)}</div>`:''}${cm[x.n].members?`<div class="muted small">${cm[x.n].members} crew</div>`:''}`:'<span class="muted">unchanged</span>'}</td>`:''}<td>${esc(x.index||'—')}</td><td>${esc(x.notes||'')}${linesOf(x).length?`<details class="small" style="margin-top:4px"><summary>${linesOf(x).length} service line${linesOf(x).length===1?'':'s'}</summary>${linesOf(x).map(l=>`<div>${esc(l.desc||famName(l.service)||'—')}: <b class="nw">${l.value===''?'—':money(l.value,c.currency)}</b> <span class="muted">${esc(UNITN[l.unit]||'')}</span></div>`).join('')}</details>`:''}${x.end?`<div class="muted small">End date set to ${fdate(x.end)}</div>`:''}</td><td>${x.file?(x.file.url?`<a class="filelink" href="${esc(x.file.url)}" target="_blank" rel="noopener">${esc(x.file.name||'Open file')}</a>`:`<a class="filelink" href="#" data-doc="${esc(x.file.id)}">${esc(x.file.name||'Open file')}</a>`):(w&&assets?`<button class="btn small" type="button" data-act="attach" data-n="${x.n}">Attach</button>`:'<span class="muted">—</span>')}</td><td class="small"><span class="nw">${x.at?fdate(x.at.slice(0,10)):'—'}</span><div class="muted">${esc(uname(x.by))}</div></td></tr>`).join(''))(Object.fromEntries(crewSeries(c).map(p=>[p.n,p])))}
   </tbody></table></div></div>
   ${(c.log||[]).length?`<div class="sec"><h3>Change log</h3><ul class="log">${[...c.log].reverse().map(l=>`<li><b class="nw">${fdate(l.at.slice(0,10))}</b> <span class="muted">${esc(uname(l.by))}</span><div>${esc(l.text)}</div></li>`).join('')}</ul></div>`:''}`;
   drawChart();
@@ -412,6 +419,7 @@ function editVersionDlg(c,n){
   <label class="check" style="flex-direction:row;align-items:flex-start;gap:10px;font-weight:500;margin-top:8px"><input type="radio" name="econv" value="keep" style="width:20px;min-height:20px;margin-top:2px"> <span>Keep the numbers as they are <span class="hint">(only the label was wrong; the amounts are already right)</span></span></label></fieldset>
   <label>Index or basis<select id="e-idx">${opt(['',...INDEXES].map(o=>[o,o||'—']),x.index||'')}</select></label>
   <label>${orig?'Original end date':'End date set by this version'} <span class="hint">${orig?'leave empty if open-ended':'leave empty if this version did not change the end date'}</span><input type="date" id="e-end" value="${esc(x.end||'')}"></label>
+  ${isSvc(c)?linesHtml(linesOf(x).map(l=>({...l})),c.period):''}
   <label class="full">What changed<textarea id="e-notes" rows="3" maxlength="2000">${esc(x.notes||'')}</textarea></label>
   ${hasCrew(c)?crewFieldsHtml(c,{value:setCrew(x)?x.crewValue:'',members:x.crewMembers||(crewSeries(c).filter(p=>p.eff<=x.eff&&p.n!==x.n).pop()?.members)||'',hint:'Fill in the crew cost that took effect with this version. Leave it empty if the crew cost did not change in this version. Crew currency and basis apply to the whole contract.',units:true}):''}
   <fieldset class="full chf"><legend>Document</legend>
@@ -432,11 +440,13 @@ function editVersionDlg(c,n){
     const L={type:'Type',eff:'Effective',value:'Value',crewValue:'Crew cost',crewMembers:'Crew members',index:'Index',notes:'Notes',end:'End date'};
     const fmt=(k,v)=>k==='value'?money(v,c.currency):k==='crewValue'?(v===''||v==null?'none':money(v,crewCurOf(c))):(k==='eff'||k==='end')?(v?fdate(v):'none'):(v||'none');
     const ch=Object.keys(L).filter(k=>String(x[k]??'')!==String(nv[k]??'')).map(k=>k==='notes'?'notes updated':`${L[k]} ${fmt(k,x[k])} → ${fmt(k,nv[k])}`);
+    let elines=null;if(isSvc(c)){elines=readLines();const lc=lineChanges(linesOf(x),elines,c.currency);if(lc.length){nv.lines=elines;ch.push(...lc)}}
     if(fileNote)ch.push(fileNote);
     const unitsChanged=val('e-cur')!==c.currency||val('e-per')!==c.period||(hasCrew(c)&&(val('x-ccur')!==crewCurOf(c)||val('x-cper')!==crewPerOf(c)));
     if(!ch.length&&!unitsChanged){dlg.close();return}
     const now=new Date().toISOString(),body=clone(c);
     body.versions=body.versions.map(v=>v.n===n?{...nv,editedAt:now,editedBy:uid}:v);
+    if(elines&&elines.length)addLineFams(body,elines);
     const extra=[];
     if(hasCrew(c)){const cc=val('x-ccur'),cp=val('x-cper');if(cc&&cc!==crewCurOf(c)){body.crewCurrency=cc;extra.push(`crew currency ${crewCurOf(c)} → ${cc}`)}else if(setCrew(nv)&&!c.crewCurrency)body.crewCurrency=cc||'BRL';if(cp&&cp!==crewPerOf(c)){body.crewPeriod=cp;extra.push(`crew billing basis ${PERIODS[crewPerOf(c)]} → ${PERIODS[cp]}`)}else if(setCrew(nv)&&!c.crewPeriod)body.crewPeriod=cp||'month'}
     {const nc=val('e-cur'),np=val('e-per');
@@ -454,6 +464,7 @@ function editVersionDlg(c,n){
      if(fac){const v=current(c).value;hint.textContent=`(e.g. current ${money(v,c.currency)} ${PERIODS[c.period]} becomes ${money(Math.round(v*fac*100)/100,ec.value)} ${PERIODS[ep.value]}; a year is taken as 365 days)`}};
    ec.addEventListener('change',upd);ep.addEventListener('change',upd);
    form.querySelectorAll('input[name=econv]').forEach(r=>r.addEventListener('change',()=>{const fac=perYearFactor(c.period,ep.value),conv=form.querySelector('input[name=econv]:checked').value;vh.textContent=`${ec.value} ${PERIODS[ep.value]||''}`+(ep.value!==c.period&&fac&&conv==='convert'?` (type it per ${c.period}; it is converted on save)`:'')}))}
+  if(isSvc(c))wireLines(()=>form.querySelector('#e-per').value,()=>form.querySelector('#e-cur').value,t=>{const v=form.querySelector('#e-val'),p=form.querySelector('#e-pct');v.value=t;if(p&&prev&&prev.value)p.value=((t-prev.value)/prev.value*100).toFixed(2)});
   if(prev){const p=form.querySelector('#e-pct'),v=form.querySelector('#e-val');
     p.addEventListener('input',()=>{const x2=parseFloat(p.value);if(isFinite(x2))v.value=(Math.round(prev.value*(1+x2/100)*100)/100).toString()});
     v.addEventListener('input',()=>{const x2=parseFloat(v.value);if(isFinite(x2)&&prev.value)p.value=((x2-prev.value)/prev.value*100).toFixed(2)})}
@@ -515,6 +526,7 @@ function contractDlg(c){
   <label>Category<select id="f-cat">${opt(CATS,d.category)}</select></label>
   <label>Country of contract *<select id="f-country">${d.country?'':'<option value="" selected disabled>Choose a country</option>'}${opt(COUNTRIES,d.country||'')}</select></label>
   <fieldset id="f-svc" class="full chf"${d.category==='service'?'':' hidden'}><legend>Service families</legend><p class="hint" style="margin:0">Select every type of service this contract covers.</p><div class="famgrid">${S.fams.map(f=>`<label><input type="checkbox" name="svc" value="${esc(f.id)}"${(d.services||[]).includes(f.id)?' checked':''}> ${esc(f.name)}</label>`).join('')}</div></fieldset>
+  ${isNew?`<div id="f-lnwrap" class="full"${d.category==='service'?'':' hidden'}>${linesHtml([],d.period)}</div>`:''}
   <fieldset id="f-ch" class="full chf"${d.category==='charter'?'':' hidden'}><legend>Vessel and charter details</legend>
   <div class="fgrid" style="margin-top:4px"><div class="full"><div style="font-size:14px;font-weight:600;margin-bottom:6px">Charter type *</div><div class="seg" role="radiogroup" aria-label="Charter type">${Object.entries(CT).map(([k,t])=>`<label><input type="radio" name="ctype" value="${k}"${(normCT(d.charterType)||'TCP')===k?' checked':''}> ${esc(t.long)}</label>`).join('')}</div><p class="hint" id="f-cthint" style="margin:6px 0 0">${esc(CT[normCT(d.charterType)||'TCP'].hint)}</p></div></div>
   ${Object.entries(CT).filter(([,t])=>t.fields.length).map(([k,t])=>`<div class="fgrid ctgroup" data-ct="${k}" style="margin-top:12px"${(normCT(d.charterType)||'TCP')===k?'':' hidden'}>${t.fields.map(([fk,fl,ft,fx])=>`<label>${esc(fl)}${ft==='select'?`<select id="f-x-${fk}">${opt(fx,d[fk]||fx[0])}</select>`:`<input id="f-x-${fk}" type="${ft}"${ft==='number'?' min="0" step="any"':''} value="${esc(d[fk]||'')}"${fx?` placeholder="${esc(fx)}"`:''} maxlength="120">`}</label>`).join('')}</div>`).join('')}
@@ -566,7 +578,8 @@ function contractDlg(c){
       const file=await upload(form.querySelector('#f-file'));if(file===false)return;
       const ref=db.collection('contracts').doc();
       const cv=val('f-crew-val'),crewOn=f.category==='charter'&&cv!==''&&Number(cv)>=0;
-      const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{...(crewOn?{crewValue:Number(cv),crewMembers:Number(val('f-crew-mem'))||''}:{}),n:1,type:'Original',eff:f.startDate,value,index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
+      const lines=f.category==='service'?readLines():[];if(lines.length)addLineFams(f,lines);
+      const body={...f,currency:val('f-cur'),period:val('f-per'),archived:false,createdAt:now,createdBy:uid,updatedAt:now,log:[],versions:[{...(crewOn?{crewValue:Number(cv),crewMembers:Number(val('f-crew-mem'))||''}:{}),n:1,type:'Original',eff:f.startDate,value,...(lines.length?{lines}:{}),index:'',notes:'Original contract',end:f.endDate||'',file,at:now,by:uid}]};
       await write(ref.id,body);S.open=ref.id;dlg.close();toast('Contract created.');
     }else{
       f.currency=val('f-cur');f.period=val('f-per');
@@ -589,10 +602,41 @@ function contractDlg(c){
    per.addEventListener('change',()=>{touched=true;if(!cv)return;const fac=perYearFactor(c.period,per.value);cv.hidden=per.value===c.period||!fac;
      if(fac){const v=current(c).value;hint.textContent=`(e.g. current ${money(v,c.currency)} ${PERIODS[c.period]} becomes ${money(Math.round(v*fac*100)/100,c.currency)} ${PERIODS[per.value]}; a year is taken as 365 days)`}});
    form.querySelector('#f-cat').addEventListener('change',e=>{if(isNew&&!touched&&e.target.value==='charter')per.value='day'})}
-  form.querySelector('#f-cat').addEventListener('change',e=>{form.querySelector('#f-ch').hidden=e.target.value!=='charter';form.querySelector('#f-svc').hidden=e.target.value!=='service'});
+  if(isNew)wireLines(()=>form.querySelector('#f-per').value,()=>form.querySelector('#f-cur').value,t=>{form.querySelector('#f-val').value=t});
+  form.querySelector('#f-cat').addEventListener('change',e=>{form.querySelector('#f-ch').hidden=e.target.value!=='charter';form.querySelector('#f-svc').hidden=e.target.value!=='service';const lw=form.querySelector('#f-lnwrap');if(lw)lw.hidden=e.target.value!=='service'});
 }
 const perYearFactor=(from,to)=>{const Y={day:365,month:12,year:1};return Y[from]&&Y[to]?Y[from]/Y[to]:null};
 const show=(k,v)=>k==='period'?(PERIODS[v]||v):k==='services'?((v||[]).map(famName).join(', ')||'none'):k==='category'?(CATN[v]||v):k==='autoRenew'?(v?'Yes':'No'):/Date$/.test(k)?(v?fdate(v):'none'):(v===''||v==null?'none':v);
+const UNITS=[['month','per month'],['day','per day'],['year','per year'],['total','lump sum'],['operation','per operation'],['m3','per m³'],['ton','per ton'],['hour','per hour'],['call','per port call'],['unit','per unit']];
+const UNITN=Object.fromEntries(UNITS);
+const lid=()=>'l'+Math.random().toString(36).slice(2,9);
+const isSvc=c=>c.category==='service';
+const linesOf=x=>Array.isArray(x?.lines)?x.lines:[];
+function lineRow(l,per){return`<div class="lnrow" data-id="${esc(l.id||lid())}">
+  <label>Service<select class="ln-svc"><option value="">—</option>${S.fams.map(f=>`<option value="${esc(f.id)}"${l.service===f.id?' selected':''}>${esc(f.name)}</option>`).join('')}</select></label>
+  <label>Description<input class="ln-desc" value="${esc(l.desc||'')}" maxlength="160" placeholder="e.g. Pumping per m³"></label>
+  <label>Value<input class="ln-val" type="number" step="0.01" min="0" inputmode="decimal" value="${l.value??''}"></label>
+  <label>Unit<select class="ln-unit">${opt(UNITS,l.unit||per||'month')}</select></label>
+  <button type="button" class="btn small ln-rm" data-act="rmLine" aria-label="Remove line">Remove</button></div>`}
+function linesHtml(lines,per,hint){return`<fieldset class="full chf" id="lnBox"><legend>Service lines</legend><p class="hint" style="margin:0 0 8px">${hint||'One line per service or price item. Lines priced in the contract’s billing basis are added up into the value.'}</p>
+  <div id="lnRows">${(lines.length?lines:[{}]).map(l=>lineRow(l,per)).join('')}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:10px"><button type="button" class="btn small" data-act="addLine">+ Add line</button><span class="small" id="lnTotal"></span></div></fieldset>`}
+function readLines(){return[...form.querySelectorAll('#lnRows .lnrow')].map(r=>({id:r.dataset.id,service:r.querySelector('.ln-svc').value,desc:r.querySelector('.ln-desc').value.trim(),value:r.querySelector('.ln-val').value===''?'':Number(r.querySelector('.ln-val').value),unit:r.querySelector('.ln-unit').value})).filter(l=>l.desc||l.service||l.value!=='')}
+const linesSum=(lines,per)=>lines.filter(l=>l.unit===per&&l.value!=='').reduce((a,l)=>a+Number(l.value),0);
+function wireLines(getPer,getCur,onSum){const box=form.querySelector('#lnBox');if(!box)return;
+  const upd=()=>{const L=readLines(),per=getPer(),m=L.filter(l=>l.unit===per&&l.value!=='');const t=form.querySelector('#lnTotal');
+    t.innerHTML=m.length?`Total of ${m.length} line${m.length===1?'':'s'} ${PERIODS[per]||per}: <b>${money(linesSum(L,per),getCur())}</b>`:L.length?`<span class="muted">No line is priced ${PERIODS[per]||per}; type the value yourself.</span>`:'';
+    if(m.length&&onSum)onSum(Math.round(linesSum(L,per)*100)/100)};
+  box.addEventListener('input',upd);box.addEventListener('change',upd);box.__upd=upd;form.querySelectorAll('#f-per,#e-per,#f-cur,#e-cur').forEach(e=>e.addEventListener('change',upd));upd()}
+function lineChanges(a,b,cur){const A=Object.fromEntries(linesOf({lines:a}).map(l=>[l.id,l])),out=[];
+  for(const l of b){const o=A[l.id];const nm=l.desc||famName(l.service)||'line';if(!o)out.push(`line added: ${nm} ${l.value!==''?money(l.value,cur):''} ${UNITN[l.unit]||''}`.trim());else{if(String(o.value)!==String(l.value))out.push(`${nm}: ${o.value===''?'none':money(o.value,cur)} → ${l.value===''?'none':money(l.value,cur)}`);if(o.desc!==l.desc||o.service!==l.service||o.unit!==l.unit)out.push(`${nm}: details changed`)}delete A[l.id]}
+  for(const o of Object.values(A))out.push(`line removed: ${o.desc||famName(o.service)||'line'}`);return out}
+const addLineFams=(body,lines)=>{const f=new Set(body.services||[]);lines.forEach(l=>l.service&&f.add(l.service));body.services=[...f]};
+function linesSection(c,cu){const v=vers(c).filter(x=>x.eff<=TODAY);const curV=[...v].reverse().find(x=>linesOf(x).length)||vers(c).find(x=>linesOf(x).length);if(!curV)return'';
+  const prevV=vers(c).filter(x=>x.eff<curV.eff||(x.eff===curV.eff&&x.n<curV.n)).reverse().find(x=>linesOf(x).length);const P=Object.fromEntries(linesOf(prevV).map(l=>[l.id,l]));
+  return`<div class="sec"><h3>Service lines <span class="muted small" style="font-weight:600">from version ${curV.n}</span></h3><div class="scroll"><table class="stack"><thead><tr><th>Service</th><th>Description</th><th class="r">Value</th><th>Unit</th><th class="r">Change</th></tr></thead><tbody>
+  ${linesOf(curV).map(l=>{const o=P[l.id],ch=o&&o.value!==''&&l.value!==''&&Number(o.value)?((l.value-o.value)/o.value*100):null;return`<tr><td class="first">${l.service?`<span class="tag">${esc(famName(l.service))}</span>`:'—'}</td><td>${esc(l.desc||'—')}</td><td class="r nw">${l.value===''?'—':money(l.value,c.currency)}</td><td class="nw">${esc(UNITN[l.unit]||l.unit||'')}</td><td class="r nw pos">${prevV?(o?(ch==null?'—':pct(ch)):'<span class="muted">new</span>'):'—'}</td></tr>`}).join('')}
+  </tbody></table></div></div>`}
 function versionDlg(c){
   const last=vers(c).slice(-1)[0]||{value:0};
   openDlg(`<h2>New version</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Latest value <b>${money(last.value,c.currency)}</b> ${PERIODS[c.period]||''}. Enter either the adjustment percentage or the new value.</p>
@@ -604,6 +648,7 @@ function versionDlg(c){
   <label>Index or basis<select id="v-idx">${opt(INDEXES,c.index||'Negotiated')}</select></label>
   <label>Extend by (months) <span class="hint">from the current end date</span><input type="number" id="v-ext" min="1" max="600" step="1" inputmode="numeric" placeholder="e.g. 12"></label>
   <label>New end date <span class="hint">for renewals and extensions</span><input type="date" id="v-end"></label>
+  ${isSvc(c)?linesHtml(linesOf(last).map(l=>({...l})),c.period,linesOf(last).length?'Copied from the latest version: change the values that change, add or remove lines. The adjustment % above applies to every line.':''):''}
   <label class="full">What changed<textarea id="v-notes" rows="3" maxlength="2000" placeholder="e.g. Annual IPCA adjustment per clause 7.2"></textarea></label>
   ${hasCrew(c)?(()=>{const cl=crewSeries(c).slice(-1)[0];return crewFieldsHtml(c,{value:cl?cl.value:'',members:cl?.members||'',base:cl?cl.value:null,hint:cl?`Latest <b>${money(cl.value,crewCurOf(c))}</b>. Leave it as it is if the crew cost does not change with this version.`:'Optional: fill in to record the crew cost from this version.'})})():''}
   ${assets?'<label class="full">Signed amendment or letter <span class="hint">PDF or image, optional</span><input type="file" id="v-file" accept=".pdf,image/*"></label>':''}
@@ -615,7 +660,8 @@ function versionDlg(c){
     const file=await upload(form.querySelector('#v-file'));if(file===false)return;
     const now=new Date().toISOString(),body=clone(c);
     const n=Math.max(0,...(c.versions||[]).map(x=>x.n))+1;
-    body.versions=[...(c.versions||[]),{n,type:val('v-type'),eff,value,index:val('v-idx'),notes:val('v-notes'),end,file,at:now,by:uid}];
+    const lines=isSvc(c)?readLines():[];if(lines.length)addLineFams(body,lines);
+    body.versions=[...(c.versions||[]),{n,type:val('v-type'),eff,value,...(lines.length?{lines}:{}),index:val('v-idx'),notes:val('v-notes'),end,file,at:now,by:uid}];
     if(end){body.log=[...(c.log||[]),{at:now,by:uid,text:`End date: ${show('endDate',c.endDate)} → ${fdate(end)} (version ${n})`}];body.endDate=end}
     const cvs=val('x-cval'),cl=crewSeries(c).slice(-1)[0],cmem=Number(val('x-cmem'))||'';
     if(hasCrew(c)&&cvs!==''&&Number(cvs)>=0&&(!cl||Number(cvs)!==cl.value||String(cmem)!==String(cl.members||''))){const nv=body.versions[body.versions.length-1];nv.crewValue=Number(cvs);nv.crewMembers=cmem;crewUnits(body)}
@@ -626,6 +672,10 @@ function versionDlg(c){
   const p=form.querySelector('#v-pct'),v=form.querySelector('#v-val');
   p.addEventListener('input',()=>{const x=parseFloat(p.value);if(isFinite(x))v.value=(Math.round(last.value*(1+x/100)*100)/100).toString()});
   v.addEventListener('input',()=>{const x=parseFloat(v.value);if(isFinite(x)&&last.value)p.value=((x-last.value)/last.value*100).toFixed(2)});
+  if(isSvc(c)){const base=linesOf(last);
+    p.addEventListener('input',()=>{const x=parseFloat(p.value);if(!isFinite(x)||!base.length)return;const B=Object.fromEntries(base.map(l=>[l.id,l]));
+      form.querySelectorAll('#lnRows .lnrow').forEach(r=>{const o=B[r.dataset.id];if(o&&o.value!=='')r.querySelector('.ln-val').value=(Math.round(o.value*(1+x/100)*100)/100).toString()});form.querySelector('#lnBox').__upd?.()});
+    wireLines(()=>c.period,()=>c.currency,t=>{if(document.activeElement===p)return;v.value=t;if(last.value)p.value=((t-last.value)/last.value*100).toFixed(2)})}
 }
 function famDlg(){
   const use=id=>S.contracts.filter(c=>(c.services||[]).includes(id)).length;
@@ -679,6 +729,8 @@ document.addEventListener('click',async e=>{
   else if(a==='archive'&&c){const b=clone(c);b.archived=!c.archived;b.log=[...(c.log||[]),{at:new Date().toISOString(),by:uid,text:c.archived?'Restored from archive':'Archived'}];try{await write(c.id,b);toast(c.archived?'Contract restored.':'Contract archived.')}catch(_){}}
   else if(a==='delete'&&c&&S.admin)confirmDlg('Delete this contract?',`<b>${esc(c.title)}</b> and its ${(c.versions||[]).length} version(s) will be removed for everyone. This can't be undone. Archiving keeps the history instead.`,'Delete permanently',async()=>{await db.collection('contracts').doc(c.id).delete();S.open=null;toast('Contract deleted.')});
   else if(a==='attach'&&c){const n=Number(t.dataset.n),inp=document.createElement('input');inp.type='file';inp.accept='.pdf,image/*';inp.onchange=async()=>{const file=await upload(inp);if(!file)return;const b=clone(c);b.versions=b.versions.map(x=>x.n===n?{...x,file}:x);try{await write(c.id,b);toast('Document attached to version '+n+'.')}catch(_){}};inp.click()}
+  else if(a==='addLine'){const r=form.querySelector('#lnRows');if(r){r.insertAdjacentHTML('beforeend',lineRow({},form.querySelector('#f-per')?.value||S.contracts.find(x=>x.id===S.open)?.period));r.lastElementChild.querySelector('.ln-desc').focus();form.querySelector('#lnBox').__upd?.()}}
+  else if(a==='rmLine'){const r=t.closest('.lnrow'),box=form.querySelector('#lnBox');r?.remove();if(box&&!box.querySelector('.lnrow'))form.querySelector('#lnRows').insertAdjacentHTML('beforeend',lineRow({},form.querySelector('#f-per')?.value||S.contracts.find(x=>x.id===S.open)?.period));box?.__upd?.()}
   else if(a==='fams'&&S.admin)famDlg();
   else if(a==='rmFam'){t.closest('.famrow').remove()}
   else if(a==='rmSamples'){const sm=S.contracts.filter(x=>x.sample);confirmDlg('Remove sample contracts?',`${sm.length} sample contract(s) will be deleted. Your own contracts are not affected.`,'Remove samples',async()=>{for(const x of sm)await db.collection('contracts').doc(x.id).delete();toast('Sample contracts removed.')})}
@@ -693,8 +745,8 @@ $('#ctry').addEventListener('change',e=>{S.country=e.target.value;render()});
 $('#arch').addEventListener('change',e=>{S.arch=e.target.checked;render()});
 $('#exportBtn').addEventListener('click',async()=>{
   const q=v=>{const s=String(v??'');return/[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-  const rows=[['Contract ID','Title','Counterparty','Country','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port','Brazilian crew cost','Crew members','Crew currency','Crew basis']];
-  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,c.country||'',CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort,setCrew(v)?v.crewValue:'',setCrew(v)?(v.crewMembers||''):'',c.category==='charter'?crewCurOf(c):'',c.category==='charter'?(PERIODS[crewPerOf(c)]||''):''])));
+  const rows=[['Contract ID','Title','Counterparty','Country','Category','Service families','Reference','Responsible','Responsible email','Currency','Billing basis','Start','End','Notice days','Auto-renew','Status','Version','Version type','Effective','Value','Change %','Index','What changed','Document','Vessel','IMO','Charter type','Charter terms','Vessel type','Flag','DWT','Delivery port','Redelivery port','Brazilian crew cost','Crew members','Crew currency','Crew basis','Service lines']];
+  S.contracts.forEach(c=>withChange(c).forEach(v=>rows.push([c.id,c.title,c.counterparty,c.country||'',CATN[c.category]||'Other',(c.services||[]).map(famName).join('; '),c.reference,c.owner,c.ownerEmail,c.currency,PERIODS[c.period]||'',c.startDate,c.endDate,c.noticeDays,c.autoRenew?'Yes':'No',status(c),v.n,v.type,v.eff,v.value,v.chg==null?'':v.chg.toFixed(2),v.index,v.notes,v.file?.name||'',c.vesselName,c.imo,c.charterType?CT[normCT(c.charterType)].long:'',(CT[normCT(c.charterType)]?.fields||[]).filter(([k])=>c[k]).map(([k,l])=>l+': '+c[k]).join('; '),c.vesselType,c.flag,c.dwt,c.deliveryPort,c.redeliveryPort,setCrew(v)?v.crewValue:'',setCrew(v)?(v.crewMembers||''):'',c.category==='charter'?crewCurOf(c):'',c.category==='charter'?(PERIODS[crewPerOf(c)]||''):'',linesOf(v).map(l=>`${famName(l.service)||''}${l.desc?' - '+l.desc:''}: ${l.value} ${UNITN[l.unit]||''}`).join('; ')])));
   const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n'),name=`contracts-${TODAY}.csv`;
   if(downloads){try{await downloads.save({filename:name,data:csv});return}catch(e){if(e?.code==='declined')return}}
   try{await navigator.clipboard.writeText(csv);toast('CSV copied to the clipboard.')}catch(_){toast('Export is not available in this view.')}
