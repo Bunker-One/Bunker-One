@@ -153,6 +153,10 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 .authmsg{margin:0;font-size:15px;min-height:1.4em}
 .authmsg.bad{color:var(--red)}
 .who{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dlgmsg{position:sticky;bottom:0;z-index:2;margin-top:16px;padding:12px 14px;background:var(--soft);border-left:5px solid var(--ink);font-size:15px;font-weight:600}
+.dlgmsg.bad{background:var(--tint);border-left-color:var(--red);color:var(--ink)}
+input.bad,select.bad,textarea.bad{border:2px solid var(--red)!important;background:var(--tint)}
+.badnote{color:var(--red);font-size:13px;font-weight:700;margin-top:2px}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;font-weight:600;max-width:calc(100vw - 32px);z-index:9;display:none}
 .filelink{color:inherit;font-weight:600}
 @media(max-width:600px){.fgrid{grid-template-columns:minmax(0,1fr)}table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flex;justify-content:space-between;gap:12px;border:0;padding:3px 0;text-align:right}.stack td::before{content:attr(data-l);color:var(--grey);font-size:13px;text-align:left}.stack td:empty{display:none}.stack td.first{display:block;text-align:left}.stack td.first::before{content:none}.tt .d{font-size:34px}}
@@ -197,8 +201,8 @@ body.locked main,body.locked header,body.locked #notice{visibility:hidden}
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=14"></script>
-<script src="adapter.js?v=14"></script>
+<script src="config.js?v=15"></script>
+<script src="adapter.js?v=15"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -238,7 +242,13 @@ const until=iso=>Math.round((ms(iso)-ms(TODAY))/864e5);
 const fdate=iso=>iso?new Date(ms(iso)).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}):'—';
 const money=(v,cur,dp=2)=>{if(v==null||isNaN(v))return'—';if(cur==='UYU')return'$U\u00a0'+Number(v).toLocaleString('en-US',{maximumFractionDigits:dp});try{return new Intl.NumberFormat('en-US',{style:'currency',currency:cur||'USD',maximumFractionDigits:dp,minimumFractionDigits:0}).format(v)}catch(e){return (cur||'')+' '+Number(v).toLocaleString('en-US')}};
 const pct=p=>p==null||!isFinite(p)?'—':(p>0?'+':p<0?'−':'')+Math.abs(p).toFixed(2)+'%';
-const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3800)};
+function formMsg(msg,bad=true){const f=document.getElementById('dlgForm');let m=f.querySelector('#dlgMsg');if(!m){m=document.createElement('div');m.id='dlgMsg';m.setAttribute('role','alert');const d=f.querySelector('.dbtn');d?d.before(m):f.append(m)}m.className='dlgmsg'+(bad?' bad':'');m.innerHTML=msg;return m}
+function formErr(msg,fields=[]){const f=document.getElementById('dlgForm');f.querySelectorAll('.bad').forEach(e=>e.classList.remove('bad'));f.querySelectorAll('.badnote').forEach(e=>e.remove());
+  const m=formMsg(msg,true);let first=null;
+  for(const [id,note] of fields){const el=f.querySelector('#'+id);if(!el)continue;const box=el.closest('fieldset[hidden],div[hidden]');if(box)box.hidden=false;el.classList.add('bad');const n=document.createElement('div');n.className='badnote';n.textContent=note;el.after(n);if(!first)first=el;
+    el.addEventListener('input',()=>{el.classList.remove('bad');n.remove()},{once:true});el.addEventListener('change',()=>{el.classList.remove('bad');n.remove()},{once:true})}
+  if(first){first.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>first.focus({preventScroll:true}),300)}else m.scrollIntoView({block:'nearest',behavior:'smooth'});return false}
+const toast=t=>{const dg=document.getElementById('dlg');if(dg&&dg.open){formMsg(esc(t),/could not|over 20|view-only|full|still saving|not available|failed|error/i.test(t));return}const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3800)};
 const uname=id=>id?(S.names[id]||'Team member'):'Sample data';
 
 /* derived data */
@@ -431,8 +441,8 @@ function editVersionDlg(c,n){
   <div class="dbtn">${S.admin&&!orig?`<button type="button" class="btn danger" data-act="delVer" data-n="${n}" style="margin-right:auto">Delete version</button>`:''}<button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save correction</button></div>`,async()=>{
     const cvx=hasCrew(c)?val('x-cval'):(setCrew(x)?x.crewValue:'');
     const nv={...x,crewValue:cvx===''?'':Number(cvx),crewMembers:hasCrew(c)?(cvx===''?'':(Number(val('x-cmem'))||'')):(x.crewMembers||''),type:orig?'Original':val('e-type'),eff:val('e-eff'),value:Number(val('e-val')),index:val('e-idx'),notes:val('e-notes'),end:val('e-end')};
-    if(!nv.eff||val('e-val')===''||!(nv.value>=0))return toast('Please enter the effective date and value.');
-    if(nv.end&&nv.end<nv.eff)return toast('The end date is before the effective date.');
+    {const P=[];if(!nv.eff)P.push(['e-eff','Effective date','Fill in the effective date']);if(val('e-val')===''||!(nv.value>=0))P.push(['e-val','Value','Fill in the value']);if(nv.end&&nv.eff&&nv.end<nv.eff)P.push(['e-end','End date','The end date is before the effective date']);
+     if(P.length)return formErr(`<div>${P.length===1?'One field needs attention':P.length+' fields need attention'}:</div><ul style="margin:6px 0 0;padding-left:20px;font-weight:500">${P.map(x=>`<li>${x[1]}: ${x[2].charAt(0).toLowerCase()+x[2].slice(1)}</li>`).join('')}</ul>`,P.map(x=>[x[0],x[2]]))}
     const nf=await upload(form.querySelector('#e-file'));if(nf===false)return;
     let fileNote='';
     if(nf){nv.file=nf;fileNote=x.file?`document replaced (${fileName} → ${nf.name})`:`document attached (${nf.name})`}
@@ -568,14 +578,20 @@ function contractDlg(c){
     f.services=f.category==='service'?[...form.querySelectorAll('input[name=svc]:checked')].map(x=>x.value):[];
     const ch=f.category==='charter';Object.assign(f,{crewCurrency:ch?val('f-crew-cur'):(c?.crewCurrency||''),crewPeriod:ch?val('f-crew-per'):(c?.crewPeriod||''),vesselName:ch?val('f-vessel'):'',imo:ch?val('f-imo'):'',charterType:ch?(form.querySelector('input[name=ctype]:checked')?.value||'TCP'):'',vesselType:ch?val('f-vtype'):'',flag:ch?val('f-flag'):'',dwt:ch?val('f-dwt'):'',deliveryPort:ch?val('f-dport'):'',redeliveryPort:ch?val('f-rport'):''});
     CTF.forEach(([k])=>f[k]='');if(ch)CT[f.charterType].fields.forEach(([k])=>f[k]=val('f-x-'+k));
-    if(!f.title||!f.counterparty||!f.startDate)return toast('Please fill in title, counterparty and start date.');
-    if(!f.country)return toast('Please choose the country of the contract.');
-    if(f.ownerEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail))return toast('The responsible email does not look right.');
-    if(f.imo&&!validImo(f.imo))return toast('That IMO number is not valid: it needs 7 digits with a correct check digit.');
-    if(f.endDate&&f.endDate<f.startDate)return toast('The end date is before the start date.');
+    {const P=[];
+     if(!f.title)P.push(['f-title','Contract title','Fill in the contract title']);
+     if(!f.counterparty)P.push(['f-cp','Counterparty','Fill in the counterparty']);
+     if(!f.country)P.push(['f-country','Country of contract','Choose a country']);
+     if(!f.startDate)P.push(['f-start','Start date','Fill in the start date']);
+     if(isNew&&val('f-val')==='')P.push(['f-val','Initial value','Fill in the initial value (or add service lines in the billing basis)']);
+     if(isNew&&val('f-val')!==''&&!(Number(val('f-val'))>=0))P.push(['f-val','Initial value','The value must be a positive number']);
+     if(f.ownerEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail))P.push(['f-oemail','Responsible email','This email does not look right']);
+     if(f.imo&&!validImo(f.imo))P.push(['f-imo','IMO number','Needs 7 digits with a correct check digit']);
+     if(f.endDate&&f.startDate&&f.endDate<f.startDate)P.push(['f-end','End date','The end date is before the start date']);
+     if(P.length)return formErr(`<div>${P.length===1?'One field needs attention':P.length+' fields need attention'}:</div><ul style="margin:6px 0 0;padding-left:20px;font-weight:500">${P.map(x=>`<li>${x[1]}: ${x[2].charAt(0).toLowerCase()+x[2].slice(1)}</li>`).join('')}</ul>`,P.map(x=>[x[0],x[2]]))}
     const now=new Date().toISOString();
     if(isNew){
-      const value=Number(val('f-val'));if(!(value>=0)||val('f-val')==='')return toast('Please enter the initial value.');
+      const value=Number(val('f-val'));
       const file=await upload(form.querySelector('#f-file'));if(file===false)return;
       const ref=db.collection('contracts').doc();
       const cv=val('f-crew-val'),crewOn=f.category==='charter'&&cv!==''&&Number(cv)>=0;
@@ -656,8 +672,8 @@ function versionDlg(c){
   </div>
   <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save version</button></div>`,async()=>{
     const value=Number(val('v-val')),eff=val('v-eff'),end=val('v-end');
-    if(!eff||val('v-val')===''||!(value>=0))return toast('Please enter the effective date and new value.');
-    if(end&&end<eff)return toast('The new end date is before the effective date.');
+    {const P=[];if(!eff)P.push(['v-eff','Effective date','Fill in the effective date']);if(val('v-val')===''||!(value>=0))P.push(['v-val','New value','Fill in the new value (or the adjustment %)']);if(end&&eff&&end<eff)P.push(['v-end','New end date','The new end date is before the effective date']);
+     if(P.length)return formErr(`<div>${P.length===1?'One field needs attention':P.length+' fields need attention'}:</div><ul style="margin:6px 0 0;padding-left:20px;font-weight:500">${P.map(x=>`<li>${x[1]}: ${x[2].charAt(0).toLowerCase()+x[2].slice(1)}</li>`).join('')}</ul>`,P.map(x=>[x[0],x[2]]))}
     const file=await upload(form.querySelector('#v-file'));if(file===false)return;
     const now=new Date().toISOString(),body=clone(c);
     const n=Math.max(0,...(c.versions||[]).map(x=>x.n))+1;
@@ -686,7 +702,7 @@ function famDlg(){
   <div class="dbtn"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Save families</button></div>`,async()=>{
     const list=[...form.querySelectorAll('#famList .famrow')].map(r=>({id:r.dataset.id,name:r.querySelector('input').value.trim()})).filter(f=>f.name);
     const nn=val('famNew');if(nn)list.push({id:(nn.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30)||'family')+'-'+Math.random().toString(36).slice(2,6),name:nn});
-    const names=list.map(f=>f.name.toLowerCase());if(new Set(names).size!==names.length)return toast('Two families have the same name.');
+    const names=list.map(f=>f.name.toLowerCase());if(new Set(names).size!==names.length)return formErr('Two families have the same name. Rename one of them.');
     for(const f of S.fams)if(!list.some(x=>x.id===f.id)&&use(f.id))list.push(f);
     try{await db.doc('settings/families').set({list,updatedAt:new Date().toISOString(),by:uid})}catch(e){toast(e?.code==='invalid_argument'?'You have view-only access.':'Could not save: '+(e?.message||'try again.'));return}
     S.fams=list;dlg.close();render();toast('Service families saved.');
