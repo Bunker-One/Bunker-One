@@ -201,8 +201,8 @@ input.bad,select.bad,textarea.bad{border:2px solid var(--red)!important;backgrou
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=15"></script>
-<script src="adapter.js?v=15"></script>
+<script src="config.js?v=16"></script>
+<script src="adapter.js?v=16"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -397,7 +397,7 @@ function renderDetail(c){
     <div><dt>Default index</dt><dd>${esc(c.index||'—')}</dd></div>
     <div><dt>Email alerts</dt><dd>${(()=>{const a=deadlines(c).filter(x=>x.m);return a.length?a.map(x=>`<span class="${x.m<=30?'st-Expiring':''}">${x.m}-day alert: ${esc(x.k.toLowerCase())}</span>`).join('<br>'):(c.archived?'Off while archived':'90, 60, 30 and 15 days before each deadline')})()}</dd></div>
   </dl>
-  ${c.category==='charter'?`<h3 style="margin-top:28px;border-bottom:2px solid var(--ink);padding-bottom:8px">Vessel and charter${c.charterType?` <span class="ctb" style="font-size:16px;padding:2px 10px;margin-left:8px">${esc(CT[normCT(c.charterType)].label)}</span>`:''}</h3>${c.charterType?`<p class="muted" style="margin:8px 0 0">${esc(CT[normCT(c.charterType)].long)}. ${esc(CT[normCT(c.charterType)].hint)}</p>`:''}<dl class="facts" style="margin-top:8px">${[...CHF,...(CT[normCT(c.charterType)]?.fields||[])].map(([k,l])=>`<div><dt>${l}</dt><dd>${k==='dwt'&&c.dwt?Number(c.dwt).toLocaleString('en-US')+' t':(k==='nextDrydock'&&c[k]?fdate(c[k]):k==='purchasePrice'&&c[k]?money(Number(c[k]),c.currency,0):k==='commission'&&c[k]?esc(c[k])+'%':esc(c[k]||'—'))}${k==='imo'&&c.imo&&!validImo(String(c.imo))?' <span class="st-Expiring small">check digit invalid</span>':''}</dd></div>`).join('')}</dl>`:''}
+  ${c.category==='charter'?`<h3 style="margin-top:28px;border-bottom:2px solid var(--ink);padding-bottom:8px">Vessel and charter${c.charterType?` <span class="ctb" style="font-size:16px;padding:2px 10px;margin-left:8px">${esc(CT[normCT(c.charterType)].label)}</span>`:''}</h3>${c.charterType?`<p class="muted" style="margin:8px 0 0">${esc(CT[normCT(c.charterType)].long)}. ${esc(CT[normCT(c.charterType)].hint)}</p>`:''}<dl class="facts" style="margin-top:8px">${[...CHF,...(CT[normCT(c.charterType)]?.fields||[])].map(([k,l])=>`<div><dt>${l}</dt><dd>${k==='dwt'&&c.dwt?Number(c.dwt).toLocaleString('en-US')+' t':(k==='nextDrydock'&&c[k]?fdate(c[k]):k==='purchasePrice'&&c[k]?money(Number(c[k]),c.currency,0):k==='commission'&&c[k]?esc(c[k])+'%':esc(c[k]||'—'))}${k==='imo'&&/^\d{7}$/.test(String(c.imo||''))&&!validImo(String(c.imo))?' <span class="st-Expiring small">check digit invalid</span>':''}</dd></div>`).join('')}</dl>`:''}
   ${c.notes?`<p style="max-width:70ch">${esc(c.notes)}</p>`:''}
   ${isSvc(c)?linesSection(c,cu):''}
   <div class="sec"><h3>Version history <span class="muted small" style="font-weight:600">${v.length} version${v.length===1?'':'s'}</span></h3>
@@ -543,7 +543,7 @@ function contractDlg(c){
   ${Object.entries(CT).filter(([,t])=>t.fields.length).map(([k,t])=>`<div class="fgrid ctgroup" data-ct="${k}" style="margin-top:12px"${(normCT(d.charterType)||'TCP')===k?'':' hidden'}>${t.fields.map(([fk,fl,ft,fx])=>`<label>${esc(fl)}${ft==='select'?`<select id="f-x-${fk}">${opt(fx,d[fk]||fx[0])}</select>`:`<input id="f-x-${fk}" type="${ft}"${ft==='number'?' min="0" step="any"':''} value="${esc(d[fk]||'')}"${fx?` placeholder="${esc(fx)}"`:''} maxlength="120">`}</label>`).join('')}</div>`).join('')}
   <div class="fgrid" style="margin-top:12px">
   <label>Vessel name<input id="f-vessel" value="${esc(d.vesselName||'')}" placeholder="e.g. MV Atlantic Star" maxlength="80"></label>
-  <label>IMO number <span class="hint">7 digits</span><input id="f-imo" inputmode="numeric" maxlength="7" value="${esc(d.imo||'')}" placeholder="e.g. 9321483"></label>
+  <label>IMO number <span class="hint">up to 10 characters</span><input id="f-imo" maxlength="10" value="${esc(d.imo||'')}" placeholder="e.g. 9321483"></label>
   <label>Vessel type<input id="f-vtype" value="${esc(d.vesselType||'')}" placeholder="e.g. Supramax bulk carrier" maxlength="80"></label>
   <label>Flag<input id="f-flag" value="${esc(d.flag||'')}" placeholder="e.g. Marshall Islands" maxlength="60"></label>
   <label>Deadweight (dwt)<input id="f-dwt" type="number" min="0" step="1" value="${esc(d.dwt||'')}"></label>
@@ -586,7 +586,6 @@ function contractDlg(c){
      if(isNew&&val('f-val')==='')P.push(['f-val','Initial value','Fill in the initial value (or add service lines in the billing basis)']);
      if(isNew&&val('f-val')!==''&&!(Number(val('f-val'))>=0))P.push(['f-val','Initial value','The value must be a positive number']);
      if(f.ownerEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail))P.push(['f-oemail','Responsible email','This email does not look right']);
-     if(f.imo&&!validImo(f.imo))P.push(['f-imo','IMO number','Needs 7 digits with a correct check digit']);
      if(f.endDate&&f.startDate&&f.endDate<f.startDate)P.push(['f-end','End date','The end date is before the start date']);
      if(P.length)return formErr(`<div>${P.length===1?'One field needs attention':P.length+' fields need attention'}:</div><ul style="margin:6px 0 0;padding-left:20px;font-weight:500">${P.map(x=>`<li>${x[1]}: ${x[2].charAt(0).toLowerCase()+x[2].slice(1)}</li>`).join('')}</ul>`,P.map(x=>[x[0],x[2]]))}
     const now=new Date().toISOString();
