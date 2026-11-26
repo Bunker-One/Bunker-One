@@ -253,9 +253,11 @@
       return { id: path, url: '', sizeBytes: file.size, contentType: file.type };
     }
   };
-  window.openDocument = async path => {
-    const w = window.open('', '_blank');
-    const { data, error } = await sb.storage.from('documents').createSignedUrl(path, 600);
+  window.openDocument = async (path, download) => {
+    const w = download ? null : window.open('', '_blank');
+    const name = path.split('/').pop();
+    const { data, error } = await sb.storage.from('documents').createSignedUrl(path, 600, download ? { download: name } : undefined);
+    if (download && !error) { const a = document.createElement('a'); a.href = data.signedUrl; a.download = name; document.body.append(a); a.click(); a.remove(); return; }
     if (error) { if (w) w.close(); alert('The file could not be opened: ' + error.message); return; }
     if (w) w.location = data.signedUrl; else location.href = data.signedUrl;
   };
