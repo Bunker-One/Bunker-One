@@ -207,8 +207,8 @@ input.bad,select.bad,textarea.bad{border:2px solid var(--red)!important;backgrou
 <dialog id="dlg"><form id="dlgForm" novalidate></form></dialog>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=18"></script>
-<script src="adapter.js?v=18"></script>
+<script src="config.js?v=19"></script>
+<script src="adapter.js?v=19"></script>
 <script>
 {
 const $=s=>document.querySelector(s);
@@ -620,6 +620,7 @@ function contractDlg(c){
    per.addEventListener('change',()=>{touched=true;if(!cv)return;const fac=perYearFactor(c.period,per.value);cv.hidden=per.value===c.period||!fac;
      if(fac){const v=current(c).value;hint.textContent=`(e.g. current ${money(v,c.currency)} ${PERIODS[c.period]} becomes ${money(Math.round(v*fac*100)/100,c.currency)} ${PERIODS[per.value]}; a year is taken as 365 days)`}});
    form.querySelector('#f-cat').addEventListener('change',e=>{if(isNew&&!touched&&e.target.value==='charter')per.value='day'})}
+  wireSuggestions();
   if(isNew)wireLines(()=>form.querySelector('#f-per').value,()=>form.querySelector('#f-cur').value,t=>{form.querySelector('#f-val').value=t});
   form.querySelector('#f-cat').addEventListener('change',e=>{form.querySelector('#f-ch').hidden=e.target.value!=='charter';form.querySelector('#f-svc').hidden=e.target.value!=='service';const lw=form.querySelector('#f-lnwrap');if(lw)lw.hidden=e.target.value!=='service'});
 }
@@ -670,6 +671,16 @@ async function readDocs(existing){const keep=[],notes=[];
 function docsSection(c){const all=vers(c).flatMap(v=>filesOf(v).map(f=>({f,v})));if(!all.length)return'';
   return`<div class="sec"><h3>Documents <span class="muted small" style="font-weight:600">${all.length} file${all.length===1?'':'s'}</span></h3><div class="scroll"><table class="stack"><thead><tr><th>Document</th><th>Type</th><th>Version</th><th>Effective</th></tr></thead><tbody>
   ${[...all].reverse().map(({f,v})=>`<tr><td class="first">${docLink(f)}</td><td>${esc(f.kind||'—')}</td><td>v${v.n} <span class="muted small">${esc(v.type)}</span></td><td class="nw">${fdate(v.eff)}</td></tr>`).join('')}</tbody></table></div></div>`}
+const SUGG=[['f-cp','counterparty'],['f-vessel','vesselName'],['f-flag','flag'],['f-vtype','vesselType'],['f-dport','deliveryPort'],['f-rport','redeliveryPort'],['f-owner','owner'],['f-oemail','ownerEmail'],['f-x-classSociety','classSociety']];
+function suggestions(key){const m=new Map();for(const c of S.contracts){const v=String(c[key]??'').trim();if(v&&!m.has(v.toLowerCase()))m.set(v.toLowerCase(),v)}return[...m.values()].sort((a,b)=>a.localeCompare(b))}
+function wireSuggestions(){
+  for(const [id,key] of SUGG){const el=form.querySelector('#'+id);if(!el)continue;const L=suggestions(key);if(!L.length)continue;
+    const dl=document.createElement('datalist');dl.id='dl-'+id;dl.innerHTML=L.map(v=>`<option value="${esc(v)}"></option>`).join('');form.append(dl);el.setAttribute('list',dl.id);el.setAttribute('autocomplete','off')}
+  const find=(key,v)=>{v=String(v||'').trim().toLowerCase();if(!v)return null;return [...S.contracts].sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).find(c=>String(c[key]||'').trim().toLowerCase()===v)||null};
+  const fillEmpty=(pairs,src,label)=>{let n=0;for(const [id,k] of pairs){const el=form.querySelector('#'+id);if(el&&!el.value&&src[k]){el.value=src[k];n++}}if(n)formMsg(`Filled in ${n} field${n===1?'':'s'} from ${esc(label)}. Check them before saving.`,false)};
+  form.querySelector('#f-vessel')?.addEventListener('change',e=>{const src=find('vesselName',e.target.value);if(src)fillEmpty([['f-imo','imo'],['f-flag','flag'],['f-vtype','vesselType'],['f-dwt','dwt']],src,'the vessel’s earlier contract')});
+  form.querySelector('#f-owner')?.addEventListener('change',e=>{const src=find('owner',e.target.value);if(src)fillEmpty([['f-oemail','ownerEmail']],src,'earlier contracts')});
+}
 function versionDlg(c){
   const last=vers(c).slice(-1)[0]||{value:0};
   openDlg(`<h2>New version</h2><p class="hint" style="font-size:15px">${esc(c.title)}. Latest value <b>${money(last.value,c.currency)}</b> ${PERIODS[c.period]||''}. Enter either the adjustment percentage or the new value.</p>
