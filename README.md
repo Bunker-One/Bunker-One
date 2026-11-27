@@ -2,7 +2,7 @@
 
 Sistema de gestão de contratos (serviços, afretamentos TCP e bareboat, locações), com controle de versões, histórico de reajustes, alertas de prazo e login próprio para cada colaborador.
 
-- **Site:** GitHub Pages (grátis) → `https://canelacool-bit.github.io/contract-register/`
+- **Site:** GitHub Pages (grátis) → `https://bunker-one.github.io/contract-register/`
 - **Dados, login e arquivos PDF:** Supabase (plano gratuito)
 - **Alertas por e-mail (90, 60, 30 e 15 dias):** GitHub Actions + Resend (grátis no volume de vocês)
 
@@ -23,7 +23,7 @@ Ninguém precisa ter conta no Claude nem no GitHub. Os colaboradores recebem um 
 3. **Feche o cadastro público:** *Authentication* → *Sign In / Providers* → **Email** → desligue **Allow new users to sign up** → *Save*.
    Assim só entra quem você convidar.
 4. **Endereço do site:** *Authentication* → *URL Configuration*:
-   - **Site URL:** `https://canelacool-bit.github.io/contract-register/`
+   - **Site URL:** `https://bunker-one.github.io/contract-register/`
    - Em **Redirect URLs**, adicione o mesmo endereço.
 5. **Crie o seu usuário (administradora):** *Authentication* → *Users* → **Add user** → **Create new user**.
    Coloque seu e-mail e uma senha, marque **Auto Confirm User** e crie.
@@ -46,7 +46,7 @@ A chave *anon* foi feita para ficar pública. Quem protege os dados é o login e
 
 1. No repositório: **Settings** → **Pages**.
 2. Em **Source**, escolha **Deploy from a branch**; em **Branch**, `main` e `/ (root)` → **Save**.
-3. Em 1 ou 2 minutos o site estará em `https://canelacool-bit.github.io/contract-register/`.
+3. Em 1 ou 2 minutos o site estará em `https://bunker-one.github.io/contract-register/`.
 4. Entre com o e-mail e a senha da Parte 1, passo 5. No topo deve aparecer **You are the administrator**.
 
 ### Parte 4: alertas por e-mail

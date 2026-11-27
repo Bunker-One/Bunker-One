@@ -25,4 +25,4 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERT_FROM: ${{ secrets.ALERT_FROM }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
-          APP_URL: https://canelacool-bit.github.io/contract-register/
+          APP_URL: https://bunker-one.github.io/contract-register/
